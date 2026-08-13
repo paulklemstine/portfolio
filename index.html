@@ -3,202 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Paul Klemstine | Senior Software Engineer & AI Architect</title>
-    <meta name="description" content="Portfolio of Paul Klemstine, Senior Software Engineer & AI Systems Architect.">
+    <title>Paul Klemstine | Senior Software Engineer & AI Systems Architect</title>
+    <meta name="description" content="Portfolio of Paul Klemstine — Senior Software Engineer & AI Systems Architect. 10+ years taking ideas from concept to production: embedded machine vision, mobile, AWS cloud, and autonomous AI systems.">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div class="noise-bg"></div>
+    <div class="bg-grid"></div>
     <div class="glow-orb orb-1"></div>
     <div class="glow-orb orb-2"></div>
-
-    <nav class="navbar">
-        <div class="nav-brand">Paul Klemstine</div>
-        <ul class="nav-links">
-            <li><a href="#about">About</a></li>
-            <li><a href="#skills">Skills</a></li>
-            <li><a href="#experience">Experience</a></li>
-            <li><a href="#projects">Projects</a></li>
-        </ul>
-    </nav>
+    <div class="glow-orb orb-3"></div>
+    <div class="noise-bg"></div>
 
     <main>
         <section class="hero" id="home">
-            <div class="hero-content">
-                <img src="img/profile.jpg" alt="Paul Klemstine" class="profile-pic animate-fade-up" style="--delay: 0.0s">
-                <p class="subtitle animate-fade-up" style="--delay: 0.1s">Senior Software Engineer & AI Systems Architect</p>
-                <h1 class="animate-fade-up" style="--delay: 0.2s">
-                    Building Intelligent,<br>
-                    <span class="gradient-text">Production-Grade Systems</span>
-                </h1>
-                <p class="hero-desc animate-fade-up" style="--delay: 0.3s">
-                    From embedded silicon to large-scale AWS cloud infrastructure and autonomous, LLM-driven research platforms.
-                </p>
+            <div class="container hero-inner">
+                <img src="img/profile.jpg" alt="Paul Klemstine" class="profile-pic animate-fade-up" style="--delay:.05s">
+                <p class="kicker animate-fade-up" style="--delay:.1s">senior software engineer / ai systems architect</p>
+                <h1 class="animate-fade-up" style="--delay:.18s">Building Intelligent,<br><span class="gradient-text">Production-Grade Systems</span></h1>
+                <p class="hero-sub animate-fade-up" style="--delay:.26s">10+ years taking ideas from concept to production — embedded machine vision, mobile, AWS cloud, and now autonomous AI that thinks for itself.</p>
+                <div class="hero-cta animate-fade-up" style="--delay:.34s">
+                    <a href="projects.html" class="btn btn-primary">View Projects &#9889;</a>
+                    <a href="resume.pdf" class="btn btn-ghost" download>Résumé &darr;</a>
+                </div>
+                <p class="hero-status animate-fade-up" style="--delay:.42s">// embedded <span class="s-grad">&#10142;</span> cloud <span class="s-grad">&#10142;</span> autonomous AI <span class="s-grad">&#10142;</span> <b>concept &#10142; production</b></p>
             </div>
         </section>
 
-        <section id="about" class="about-section">
+        <section id="featured">
             <div class="container">
-                <h2 class="section-title">Professional Summary</h2>
-                <div class="glass-card summary-card">
-                    <p class="lead-text">
-                        Visionary senior software engineer and AI systems architect with deep, hands-on expertise across the full technology stack.
-                    </p>
-                    <p>
-                        A proven builder who thrives in early-stage and startup environments: owning architecture end-to-end, solving genuinely hard algorithmic problems, and shipping polished products to market. Recognized for translating cutting-edge research (deep neural networks, computer vision, audio synthesis, and large-language-model orchestration) into real, working software — and for the leadership to recruit, mentor, and scale engineering teams around it.
-                    </p>
+                <div class="section-head">
+                    <p class="kicker">featured project</p>
+                    <h2>An AI that plays a game.<br><span class="gradient-warm">It plans. It learns. It thinks.</span></h2>
+                    <p class="section-sub">The deepest example of autonomous-agent engineering in the portfolio.</p>
                 </div>
+                <div class="featured-panel glass-card" data-featured></div>
             </div>
         </section>
 
-        <section id="skills" class="skills-section">
+        <section id="preview">
             <div class="container">
-                <h2 class="section-title">Core Skills</h2>
-                <div class="skills-grid">
-                    <div class="glass-card skill-card">
-                        <div class="skill-icon">🪄</div>
-                        <h3>Fullstack AI Wizardry</h3>
-                        <p>Claude Code, OpenCode, Ollama, LLM orchestration, autonomous agent systems, deep neural networks, and generative AI integrations.</p>
-                    </div>
-                    <div class="glass-card skill-card">
-                        <div class="skill-icon">💻</div>
-                        <h3>Languages</h3>
-                        <p>Lean 4, JavaScript / TypeScript, Python, Java, and lots of others.</p>
-                    </div>
-                    <div class="glass-card skill-card">
-                        <div class="skill-icon">📱</div>
-                        <h3>Mobile Development</h3>
-                        <p>Android, iOS, React Native, LibGDX, cross-platform cross-compilation.</p>
-                    </div>
-                    <div class="glass-card skill-card">
-                        <div class="skill-icon">☁️</div>
-                        <h3>Cloud & DevOps</h3>
-                        <p>Amazon AWS (microservices, Serverless, managed services), Google Cloud, GitHub, Docker, Linux, CI/CD, infrastructure ownership.</p>
-                    </div>
+                <div class="section-head">
+                    <p class="kicker">selected projects</p>
+                    <h2>More ways I build with AI</h2>
                 </div>
+                <div class="preview-grid" data-preview></div>
+                <a href="projects.html" class="center-link">view all projects &rarr;</a>
             </div>
         </section>
 
-        <section id="experience" class="experience-section">
+        <section id="stack">
             <div class="container">
-                <h2 class="section-title">Professional Experience</h2>
-                <div class="timeline">
-                    <div class="timeline-item glass-card">
-                        <div class="timeline-date">Jan 2018 – Sep 2019</div>
-                        <h3>Senior Software Engineer</h3>
-                        <h4>Dodl.es</h4>
-                        <ul>
-                            <li>Built dodl.es, an animation-sharing mobile application, as a cross-compiled Java / LibGDX / React Native codebase.</li>
-                            <li>Successfully shipped to both the Apple App Store and Google Play.</li>
-                            <li>Led and mentored a team of junior developers, running rigorous code reviews to raise engineering standards.</li>
-                        </ul>
-                    </div>
-
-                    <div class="timeline-item glass-card">
-                        <div class="timeline-date">Oct 2018 – Sep 2019</div>
-                        <h3>Senior Software Engineer</h3>
-                        <h4>Pound.Social</h4>
-                        <ul>
-                            <li>Architected and built backend AWS microservices powering Instagram-related promotions.</li>
-                            <li>Leveraged Docker, Serverless, and Amazon managed services to deliver scalable, event-driven infrastructure.</li>
-                        </ul>
-                    </div>
-
-                    <div class="timeline-item glass-card">
-                        <div class="timeline-date">Jun 2017 – Jan 2018</div>
-                        <h3>Solutions Developer</h3>
-                        <h4>ZyQuest</h4>
-                        <ul>
-                            <li>Architected a real-time Android image-classification app powered by deep neural networks, well ahead of the 2017 state of the art.</li>
-                            <li>Upgraded a graphical door-configurator web application for a national door manufacturer.</li>
-                        </ul>
-                    </div>
-
-                    <div class="timeline-item glass-card">
-                        <div class="timeline-date">Apr 2016 – Apr 2017</div>
-                        <h3>Chief Technology Officer</h3>
-                        <h4>Dodles, Inc</h4>
-                        <ul>
-                            <li>Implemented a state-of-the-art character animation system and fine-tuned the graphics engine.</li>
-                            <li>Owned and operated the entire AWS infrastructure, from CI servers to production Docker containers.</li>
-                            <li>Maintained and shipped updates across Android, iOS, and JavaScript versions single-handedly.</li>
-                            <li>Recruited, hired, and mentored a 3-engineer in-house team.</li>
-                        </ul>
-                    </div>
-
-                    <div class="timeline-item glass-card">
-                        <div class="timeline-date">Oct 2013 – Apr 2016</div>
-                        <h3>Software Engineer</h3>
-                        <h4>LIVEALITY</h4>
-                        <ul>
-                            <li>Engineered complete stack for internet-connected motion-tracking cameras: embedded Linux, vision algorithms, mobile apps.</li>
-                            <li>Invented a novel motion-tracking algorithm using a single stationary camera to emulate hundreds of pan/zoom dynamic cameras.</li>
-                            <li>Built Android/iOS event apps with real-time tracking, news, and photo uploads.</li>
-                        </ul>
-                    </div>
+                <div class="section-head">
+                    <p class="kicker">the stack</p>
+                    <h2>What I ship with</h2>
                 </div>
-            </div>
-        </section>
-
-        <section id="projects" class="projects-section">
-            <div class="container">
-                <h2 class="section-title">Selected Projects</h2>
-                <div class="projects-grid">
-                    <a href="https://alethean.org" target="_blank" class="glass-card project-card">
-                        <div class="project-content">
-                            <div class="project-icon">⚙️</div>
-                            <h3>Alethean Research</h3>
-                            <p class="project-desc">Autonomous Logic Engine for Theorem Hunting, Exploration, And Navigation.<br><br>The unconcealed truth between conjecture and proof.<br><br>This engine pulls mathematical certainty from the void of wild human intuition. ALETHEAN autonomously navigates the vast landscape of logic, formalizing and proving theorems in Lean 4 to build an ever-expanding registry of absolute mathematical truths.</p>
-                            <span class="project-link">alethean.org &rarr;</span>
-                        </div>
-                    </a>
-                    <a href="https://geems.web.app" target="_blank" class="glass-card project-card">
-                        <div class="project-content">
-                            <div class="project-icon">🌌</div>
-                            <h3>Geems (Guided Extreme Emotional Mental States)</h3>
-                            <p class="project-desc">A "choose your own adventure" style game secretly powered by an AI psychologist that evaluates your choices and generates a comprehensive wellness and personality report.</p>
-                            <span class="project-link">geems.web.app &rarr;</span>
-                        </div>
-                    </a>
-                    <!--
-                    <a href="backup/index.html" target="_blank" class="glass-card project-card">
-                        <div class="project-content">
-                            <div class="project-icon">📐</div>
-                            <h3>Pythagorean Cosmos</h3>
-                            <p class="project-desc">A formally verified unifying theory connecting number theory, quantum computing, neural architecture, and relativistic physics — all through the Pythagorean equation a² + b² = c². Features 5,052+ machine-verified theorems in Lean 4 with zero sorrys, exploring the Five Pillars of Algebraic Light.</p>
-                            <span class="project-link">View Archive &rarr;</span>
-                        </div>
-                    </a>
-                    -->
-                    <a href="https://flowspace.web.app" target="_blank" class="glass-card project-card">
-                        <div class="project-content">
-                            <div class="project-icon">💭</div>
-                            <h3>Flow Space</h3>
-                            <p class="project-desc">A real-time collaborative whiteboard with AI-powered content generation. Create sticky notes, flowcharts, mind maps, and more — together.</p>
-                            <span class="project-link">flowspace.web.app &rarr;</span>
-                        </div>
-                    </a>
-                    <a href="https://bsky.app/profile/e-v-l-o-v-e.bsky.social" target="_blank" class="glass-card project-card">
-                        <div class="project-content">
-                            <div class="project-icon">💗</div>
-                            <h3>L.O.V.E. — Living Organism, Vast Empathy</h3>
-                            <p class="project-desc">An autonomous AI creating uplifting, motivational art for your soul. Broadcasting daily soulful prose and positivity across Bluesky under Peace • Love • Unity • Respect.</p>
-                            <span class="project-link">@e-v-l-o-v-e.bsky.social &rarr;</span>
-                        </div>
-                    </a>
-                </div>
+                <div class="ticker" data-ticker></div>
             </div>
         </section>
     </main>
 
-    <footer>
-        <p>&copy; 2026 Paul Klemstine. All rights reserved.</p>
-    </footer>
-
+    <script src="js/projects.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>

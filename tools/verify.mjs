@@ -66,7 +66,7 @@ groups.push({ name: 'styles', run() {
 }});
 
 const PAGE_CHECKS = {
-  'index.html':    ['.bg-grid', 'data-featured', 'data-preview', 'data-ticker', 'css/style.css', 'js/projects.js', 'js/main.js', 'resume.pdf', 'projects.html'],
+  'index.html':    ['class="bg-grid"', 'data-featured', 'data-preview', 'data-ticker', 'css/style.css', 'js/projects.js', 'js/main.js', 'resume.pdf', 'projects.html'],
   'projects.html': ['data-projects', 'css/style.css', 'js/projects.js', 'js/main.js'],
   'about.html':    ['timeline', 'skills-grid', 'css/style.css', 'js/main.js'],
 };
