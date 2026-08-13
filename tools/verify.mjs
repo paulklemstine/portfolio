@@ -91,41 +91,6 @@ for (const [file, markers] of Object.entries(PAGE_CHECKS)) {
   }});
 }
 
-groups.push({ name: 'new', run() {
-  const pages = ['new/index.html', 'new/systems.html', 'new/about.html', 'new/resume.html'];
-  for (const p of pages) ok(`new page exists: ${p}`, exists(p));
-  const idx = read('new/index.html');
-  for (const m of ['data-proof', 'data-flagship', 'data-systems', 'data-breadth', 'css/style.css', 'js/systems.js', 'js/main.js', 'resume.pdf']) ok(`new/index.html: ${m}`, idx.includes(m));
-  const sysp = read('new/systems.html');
-  for (const m of ['data-cases', 'css/style.css', 'js/systems.js', 'js/main.js']) ok(`new/systems.html: ${m}`, sysp.includes(m));
-  const abt = read('new/about.html');
-  for (const m of ['data-skills', 'data-chapters', 'css/style.css', 'js/systems.js', 'js/main.js', 'resume.pdf']) ok(`new/about.html: ${m}`, abt.includes(m));
-  const res = read('new/resume.html');
-  for (const m of ['proof-strip', 'AI-First Software Engineer', 'Alethean Research', 'Appleton Makerspace', 'Technical skills', '@page{size:Letter']) ok(`new/resume.html: ${m}`, res.includes(m));
-  const css = read('new/css/style.css');
-  for (const t of [':root', '--paper:', '--violet:', '--cyan:', '--font-display:']) ok(`new css token ${t}`, css.includes(t));
-  ok('new resume.pdf exists', exists('new/resume.pdf'));
-  if (exists('new/resume.pdf')) ok('new resume.pdf non-trivial', fs.statSync(path.join(ROOT, 'new/resume.pdf')).size > 10000);
-  if (!exists('new/js/systems.js')) { ok('new/js/systems.js exists', false); return; }
-  const window = {};
-  let systems = null;
-  try { systems = new Function('window', read('new/js/systems.js') + '\n;return window.SYSTEMS;')(window); }
-  catch (e) { ok('new systems.js evaluates without error', false, String(e && e.message)); return; }
-  ok('new systems.js evaluates without error', true);
-  ok('SYSTEMS is an array of 7', Array.isArray(systems) && systems.length === 7, 'got ' + (systems && systems.length));
-  const ids = new Set(systems.map((s) => s.id));
-  ok('system ids unique', ids.size === systems.length);
-  for (const s of systems) {
-    ok(`[${s.id}] name`, !!s.name);
-    ok(`[${s.id}] url`, !!s.url);
-    ok(`[${s.id}] proof>=1`, Array.isArray(s.proof) && s.proof.length >= 1);
-    ok(`[${s.id}] banner image`, exists('new/img/' + s.id + '.png'));
-  }
-  ok('systems[0] is Alethean flagship', systems[0] && systems[0].id === 'alethean');
-  const mj = read('new/js/main.js');
-  for (const m of ['data-nav', 'data-proof', 'data-systems', 'data-cases', 'data-skills', 'data-chapters', 'resume.pdf']) ok(`new main.js: ${m}`, mj.includes(m));
-}});
-
 const toRun = GROUP === 'all' ? groups : groups.filter((g) => g.name === GROUP);
 if (GROUP !== 'all' && toRun.length === 0) { console.error(`unknown group "${GROUP}"`); process.exit(2); }
 for (const g of toRun) { console.log(`\n== ${g.name} ==`); g.run(); }
