@@ -66,5 +66,16 @@ window.PROJECTS = [
     image: 'img/cosmos.png',
     icon: '📐',
     featured: false
+  },
+  {
+    id: 'appleton-makerspace',
+    name: 'Appleton Makerspace',
+    tagline: 'Cofounder & two-term president of a community makerspace',
+    description: 'Cofounded Appleton Makerspace — a community workshop where makers, tinkerers, and educators share tools and build together. Served two terms as president, shaping the space, its workshops, and the community that grew around it.',
+    tags: ['Community', 'Leadership', 'Makerspace'],
+    url: 'https://www.appletonmakerspace.org/',
+    image: 'img/appleton-makerspace.png',
+    icon: '🔧',
+    featured: false
   }
 ];

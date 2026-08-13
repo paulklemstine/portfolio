@@ -37,7 +37,7 @@ groups.push({ name: 'data', run() {
   try { projects = new Function('window', read('js/projects.js') + '\n;return window.PROJECTS;')(window); }
   catch (e) { ok('projects.js evaluates without error', false, String(e && e.message)); return; }
   ok('projects.js evaluates without error', true);
-  ok('PROJECTS is an array of 6', Array.isArray(projects) && projects.length === 6, 'got ' + (projects && projects.length));
+  ok('PROJECTS is an array of 7', Array.isArray(projects) && projects.length === 7, 'got ' + (projects && projects.length));
   const ids = new Set(projects.map((p) => p.id));
   ok('project ids unique', ids.size === projects.length);
   for (const p of projects) {

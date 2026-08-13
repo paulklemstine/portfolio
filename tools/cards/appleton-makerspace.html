@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --bg:#05060a; --violet:#8b5cf6; --cyan:#22d3ee; --pink:#ec4899;
+    --text:#f4f6fb; --muted:#9aa3b8;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:100%; height:100%; overflow:hidden; }
+  body {
+    background:var(--bg);
+    font-family:'Space Grotesk','Outfit',sans-serif;
+    color:var(--text);
+    position:relative;
+  }
+  /* grid */
+  .grid{
+    position:absolute; inset:0;
+    background-image:
+      linear-gradient(rgba(139,92,246,.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(139,92,246,.07) 1px, transparent 1px);
+    background-size:46px 46px;
+    -webkit-mask-image:radial-gradient(ellipse at 50% 42%, black 32%, transparent 80%);
+            mask-image:radial-gradient(ellipse at 50% 42%, black 32%, transparent 80%);
+  }
+  /* orbs */
+  .orb{ position:absolute; border-radius:50%; filter:blur(90px); }
+  .orb-v{ width:480px;height:480px; left:-150px; top:-160px; background:radial-gradient(circle, rgba(139,92,246,.5), transparent 70%); }
+  .orb-c{ width:520px;height:520px; right:-160px; bottom:-220px; background:radial-gradient(circle, rgba(34,211,238,.42), transparent 70%); }
+  .orb-p{ width:280px;height:280px; left:58%; top:36%; background:radial-gradient(circle, rgba(236,72,153,.18), transparent 70%); }
+  /* scanline sweep */
+  .scan{
+    position:absolute; left:0; right:0; height:120px; top:40%;
+    background:linear-gradient(180deg, transparent, rgba(139,92,246,.06), transparent);
+    animation:sweep 9s linear infinite;
+  }
+  @keyframes sweep { from{ transform:translateY(-140px);} to{ transform:translateY(240px);} }
+
+  /* corner tags — visible only on the wide (projects-grid) crop */
+  .tag{ position:absolute; font-family:'JetBrains Mono',monospace; font-size:15px; letter-spacing:.14em; color:var(--muted); }
+  .tag a{ text-decoration:none; color:var(--muted); }
+  .tl{ top:26px; left:30px; }
+  .tl::before{ content:""; display:inline-block; width:8px; height:8px; border-radius:50%;
+    background:var(--pink); box-shadow:0 0 10px var(--pink); margin-right:9px; vertical-align:1px; }
+  .br{ bottom:26px; right:30px; color:#6b7a93; }
+  .br b{ color:var(--cyan); font-weight:700; }
+
+  /* center composition — survives the 190px card crop */
+  .center{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:680px; text-align:center; z-index:3;
+  }
+  .logo-plate{
+    display:inline-block; background:#fff; padding:34px 56px;
+    border-radius:14px;
+    box-shadow:0 0 70px rgba(255,255,255,.20), 0 24px 60px rgba(0,0,0,.45);
+    margin-bottom:26px;
+  }
+  .logo-plate img{ width:540px; height:auto; display:block; }
+  .sub{
+    margin-top:0; font-family:'JetBrains Mono',monospace; font-size:18px;
+    letter-spacing:.24em; color:#c7cde0; text-transform:uppercase;
+  }
+  .chain{
+    margin-top:20px; display:flex; justify-content:center; align-items:center;
+    gap:0; font-family:'JetBrains Mono',monospace; font-size:16px;
+  }
+  .pill{
+    padding:7px 16px; border-radius:999px; color:#e6e9f5;
+    background:rgba(236,72,153,.12); border:1px solid rgba(236,72,153,.5);
+    box-shadow:0 0 16px rgba(236,72,153,.22) inset;
+  }
+  .pill.ok{ background:rgba(34,211,238,.10); border-color:rgba(34,211,238,.5); color:#d9fbff;
+    box-shadow:0 0 16px rgba(34,211,238,.25) inset; }
+  .arr{ color:#7b86a0; font-size:15px; margin:0 12px; }
+  .endline{ margin-top:26px; font-family:'JetBrains Mono',monospace; font-size:14px; letter-spacing:.12em; color:#6b7a93; }
+  .endline b{ color:var(--pink); }
+  .endline .u{ color:var(--cyan); }
+</style>
+</head>
+<body>
+  <div class="grid"></div>
+  <div class="orb orb-v"></div>
+  <div class="orb orb-c"></div>
+  <div class="orb orb-p"></div>
+  <div class="scan"></div>
+
+  <div class="tag tl"><a href="https://www.appletonmakerspace.org">appletonmakerspace.org</a></div>
+  <div class="tag br">COMMUNITY WORKSHOP &middot; <b>OPEN TO ALL</b></div>
+
+  <div class="center">
+    <div class="logo-plate"><img src="../../img/appleton-makerspace-logo.png" alt="Appleton Makerspace logo"></div>
+
+    <div class="sub">Cofounder &amp; Two-Term President</div>
+
+    <div class="chain">
+      <span class="pill">community</span><span class="arr">&#10142;</span>
+      <span class="pill">shared tools &amp; workshops</span><span class="arr">&#10142;</span>
+      <span class="pill ok">open to all &#10003;</span>
+    </div>
+    <div class="endline">makers &middot; tinkerers &middot; educators &nbsp;&#8212;&nbsp; <b>build together</b> <span class="u">in the Fox Cities</span></div>
+  </div>
+</body>
+</html>
