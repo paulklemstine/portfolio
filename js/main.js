@@ -27,7 +27,7 @@
     body.insertAdjacentHTML('beforeend',
       '<footer class="site-footer">' +
         '<div class="footer-inner">' +
-          '<div class="footer-line">&copy; <span id="year"></span> Paul Klemstine &middot; Senior Software Engineer &amp; AI Systems Architect</div>' +
+          '<div class="footer-line">&copy; <span id="year"></span> Paul Klemstine &middot; AI-First Software Engineer</div>' +
           '<div class="footer-links">' +
             '<a href="mailto:paulklemstine@gmail.com">paulklemstine@gmail.com</a>' +
             '<a href="' + GITHUB + '" target="_blank" rel="noopener">GitHub</a>' +
