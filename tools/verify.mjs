@@ -20,7 +20,7 @@ groups.push({ name: 'assets', run() {
   if (exists('resume.pdf')) ok('resume.pdf non-trivial', fs.statSync(path.join(ROOT, 'resume.pdf')).size > 10000);
   if (exists('cover-letter.pdf')) ok('cover-letter.pdf non-trivial', fs.statSync(path.join(ROOT, 'cover-letter.pdf')).size > 10000);
   const fb = JSON.parse(read('firebase.json'));
-  ok('firebase.json ignores docs/', Array.isArray(fb.hosting.ignore) && fb.hosting.ignore.includes('docs'));
+  ok('firebase.json ignores docs/', Array.isArray(fb.hosting.ignore) && fb.hosting.ignore.some((i) => i.startsWith('docs')));
 }});
 
 groups.push({ name: 'data', run() {

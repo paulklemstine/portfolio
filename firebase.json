@@ -6,7 +6,7 @@
       "firebase.json",
       ".firebaserc",
       "link_images.sh",
-      "docs",
+      "docs/**",
       "**/.*"
     ]
   }
