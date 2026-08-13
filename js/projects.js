@@ -2,17 +2,6 @@
 // Add or update a project here; js/main.js renders it on index.html and projects.html.
 window.PROJECTS = [
   {
-    id: 'tyrant-ai',
-    name: 'Tyrant AI',
-    tagline: 'An autonomous AI hero playing a classic roguelike — live in your browser',
-    description: 'A 1997 Java roguelike recompiled to WebAssembly (CheerpJ) and set loose. An LLM plans quests, routing, and shopping; a deterministic reflex brain trained by offline scenario RL handles combat and survival; and a subgoal goal-tree with real pathfinding keeps the hero committed instead of thrashing. Watch an AI agent think, turn by turn, in the live debug console.',
-    tags: ['Java', 'CheerpJ / WASM', 'LLM planning', 'RL-trained reflexes', 'Goal-tree pathfinding'],
-    url: 'https://tyrantai.web.app',
-    image: 'img/tyrant.png',
-    icon: '⚔️',
-    featured: true
-  },
-  {
     id: 'alethean',
     name: 'Alethean Research',
     tagline: 'An autonomous logic engine that hunts, formalizes, and proves theorems',
@@ -21,7 +10,18 @@ window.PROJECTS = [
     url: 'https://alethean.org',
     image: 'img/alethean.png',
     icon: '⚙️',
-    featured: false
+    featured: true
+  },
+  {
+    id: 'tyrant-ai',
+    name: 'Tyrant AI',
+    tagline: 'An autonomous AI hero playing a classic roguelike — live in your browser',
+    description: 'A 1997 Java roguelike, recompiled to WebAssembly and set loose. An LLM plans quests, routing, and shopping; a deterministic reflex brain trained by offline scenario RL handles combat and survival; and a subgoal goal-tree with real pathfinding keeps the hero committed instead of thrashing. Watch an AI agent think, turn by turn, in the live debug console.',
+    tags: ['Java', 'CheerpJ / WASM', 'LLM planning', 'RL-trained reflexes', 'Goal-tree pathfinding'],
+    url: 'https://tyrantai.web.app',
+    image: 'img/tyrant.png',
+    icon: '⚔️',
+    spotlight: true
   },
   {
     id: 'geems',

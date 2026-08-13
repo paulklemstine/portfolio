@@ -87,10 +87,10 @@
     });
   }
 
-  function renderFeatured(selector) {
+  function renderFeatured(selector, badgeText, flag) {
     var host = document.querySelector(selector);
     if (!host) return;
-    var p = PROJECTS.filter(function (x) { return x.featured; })[0];
+    var p = PROJECTS.filter(function (x) { return x[flag || 'featured']; })[0];
     if (!p) return;
     var media = p.image
       ? '<img src="' + p.image + '" alt="' + p.name + '" loading="lazy">'
@@ -100,7 +100,7 @@
     host.innerHTML =
       '<a class="fp-media" href="' + p.url + '"' + rel + ' aria-label="' + p.name + '">' + media + '</a>' +
       '<div class="fp-body">' +
-        '<span class="fp-badge">Featured &middot; Autonomous AI</span>' +
+        '<span class="fp-badge">' + (badgeText || 'Featured') + '</span>' +
         '<h2>' + p.name + '</h2>' +
         '<p class="project-tagline">' + p.tagline + '</p>' +
         '<p class="project-desc">' + p.description + '</p>' +
@@ -126,8 +126,9 @@
     injectChrome();
     var page = currentPage();
     if (page === 'index') {
-      renderFeatured('[data-featured]');
-      renderCards('[data-preview]', PROJECTS.filter(function (p) { return !p.featured; }).slice(0, 3));
+      renderFeatured('[data-featured]', 'Featured &middot; Formal Verification');
+      renderFeatured('[data-spotlight]', 'Spotlight &middot; Autonomous Agent', 'spotlight');
+      renderCards('[data-preview]', PROJECTS.filter(function (p) { return !p.featured && !p.spotlight; }).slice(0, 3));
       renderTicker('[data-ticker]');
     } else if (page === 'projects') {
       renderCards('[data-projects]', PROJECTS);

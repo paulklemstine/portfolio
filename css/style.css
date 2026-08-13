@@ -147,6 +147,16 @@ section { padding: 5rem 0; position: relative; }
 .fp-body h2 { font-size: clamp(1.8rem, 3.4vw, 2.5rem); }
 .fp-body .project-desc { font-size: 1rem; }
 
+/* Primary featured hero (Alethean) — the flagship space */
+.featured-hero {
+  border-color: rgba(139, 92, 246, 0.32);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.5), 0 0 70px rgba(139, 92, 246, 0.16);
+}
+.featured-hero::before { height: 3px; background: linear-gradient(90deg, var(--violet), var(--cyan), var(--pink)); }
+.featured-hero .fp-media img { min-height: 400px; }
+.featured-hero .fp-body { padding: 3rem; }
+#spotlight { padding-top: 0; }
+
 /* ---------- Preview grid (home) ---------- */
 .preview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.6rem; }
 .center-link { display: block; text-align: center; margin-top: 2.2rem; color: var(--cyan); font-family: var(--font-mono); text-decoration: none; font-weight: 700; }

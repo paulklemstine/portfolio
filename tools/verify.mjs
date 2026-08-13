@@ -52,6 +52,10 @@ groups.push({ name: 'data', run() {
   }
   ok('exactly one featured', projects.filter((p) => p.featured).length === 1);
   ok('featured is first', !!(projects[0] && projects[0].featured));
+  const spotlight = projects.filter((p) => p.spotlight);
+  ok('exactly one spotlight', spotlight.length === 1);
+  ok('spotlight is second', !!(projects[1] && projects[1].spotlight));
+  ok('spotlight is not also featured', !spotlight[0] || !spotlight[0].featured);
 }});
 
 groups.push({ name: 'chrome', run() {
@@ -59,6 +63,7 @@ groups.push({ name: 'chrome', run() {
   ok('main.js defines nav template', mj.includes('<nav class="navbar"'));
   ok('main.js injects footer', mj.includes('site-footer'));
   ok('main.js renders featured', mj.includes('renderFeatured') && mj.includes('[data-featured]'));
+  ok('main.js renders spotlight', mj.includes('[data-spotlight]'));
   ok('main.js renders preview', mj.includes('[data-preview]'));
   ok('main.js renders full grid', mj.includes('[data-projects]'));
   ok('main.js renders ticker', mj.includes('[data-ticker]'));
@@ -73,7 +78,7 @@ groups.push({ name: 'styles', run() {
 }});
 
 const PAGE_CHECKS = {
-  'index.html':    ['class="bg-grid"', 'data-featured', 'data-preview', 'data-ticker', 'css/style.css', 'js/projects.js', 'js/main.js', 'resume.pdf', 'projects.html'],
+  'index.html':    ['class="bg-grid"', 'data-featured', 'data-spotlight', 'data-preview', 'data-ticker', 'css/style.css', 'js/projects.js', 'js/main.js', 'resume.pdf', 'projects.html'],
   'projects.html': ['data-projects', 'css/style.css', 'js/projects.js', 'js/main.js'],
   'about.html':    ['timeline', 'skills-grid', 'css/style.css', 'js/main.js'],
 };
