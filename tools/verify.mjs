@@ -20,7 +20,14 @@ groups.push({ name: 'assets', run() {
   if (exists('resume.pdf')) ok('resume.pdf non-trivial', fs.statSync(path.join(ROOT, 'resume.pdf')).size > 10000);
   if (exists('cover-letter.pdf')) ok('cover-letter.pdf non-trivial', fs.statSync(path.join(ROOT, 'cover-letter.pdf')).size > 10000);
   const fb = JSON.parse(read('firebase.json'));
-  ok('firebase.json ignores docs/', Array.isArray(fb.hosting.ignore) && fb.hosting.ignore.some((i) => i.startsWith('docs')));
+  const hostings = Array.isArray(fb.hosting) ? fb.hosting : [fb.hosting];
+  ok('firebase.json hosts paulklemstine site', hostings.some((h) => h.site === 'paulklemstine'));
+  ok('firebase.json hosts pythagoreancosmos site', hostings.some((h) => h.site === 'pythagoreancosmos'));
+  const mainSite = hostings.find((h) => h.site === 'paulklemstine');
+  ok('paulklemstine ignores docs/', Array.isArray(mainSite && mainSite.ignore) && mainSite.ignore.some((i) => i.startsWith('docs')));
+  const cosmosSite = hostings.find((h) => h.site === 'pythagoreancosmos');
+  ok('pythagoreancosmos serves backup/', cosmosSite && cosmosSite.public === 'backup');
+  ok('cosmos site content exists', exists('backup/index.html'));
 }});
 
 groups.push({ name: 'data', run() {

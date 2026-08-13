@@ -62,7 +62,7 @@ window.PROJECTS = [
     tagline: 'A formally verified unifying theory through a² + b² = c²',
     description: '5,052+ machine-verified theorems in Lean 4, zero sorrys — connecting number theory, quantum computing, neural architecture, and relativistic physics through the Pythagorean equation.',
     tags: ['Lean 4', 'Formal verification', 'Mathematics'],
-    url: 'backup/index.html',
+    url: 'https://pythagoreancosmos.web.app',
     image: 'img/cosmos.png',
     icon: '📐',
     featured: false

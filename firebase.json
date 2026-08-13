@@ -1,13 +1,25 @@
 {
-  "hosting": {
-    "site": "paulklemstine",
-    "public": ".",
-    "ignore": [
-      "firebase.json",
-      ".firebaserc",
-      "link_images.sh",
-      "docs/**",
-      "**/.*"
-    ]
-  }
+  "hosting": [
+    {
+      "site": "paulklemstine",
+      "public": ".",
+      "ignore": [
+        "firebase.json",
+        ".firebaserc",
+        "link_images.sh",
+        "docs/**",
+        "**/.*"
+      ]
+    },
+    {
+      "site": "pythagoreancosmos",
+      "public": "backup",
+      "ignore": [
+        "firebase.json",
+        ".firebaserc",
+        "link_images.sh",
+        "**/.*"
+      ]
+    }
+  ]
 }
