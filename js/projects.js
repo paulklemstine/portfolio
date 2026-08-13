@@ -2,17 +2,6 @@
 // Add or update a project here; js/main.js renders it on index.html and projects.html.
 window.PROJECTS = [
   {
-    id: 'alethean',
-    name: 'Alethean Research',
-    tagline: 'An autonomous logic engine that hunts, formalizes, and proves theorems',
-    description: 'The autonomous research system behind Alethean discovers and formally verifies mathematical truth in Lean 4 — a two-phase pipeline producing machine-checked proofs and packaging them as papers, demos, and visualizations. Unconcealed truth between conjecture and proof.',
-    tags: ['Lean 4', 'Automated theorem proving', 'LLM research agents', 'Formal verification'],
-    url: 'https://alethean.org',
-    image: 'img/alethean.png',
-    icon: '⚙️',
-    featured: true
-  },
-  {
     id: 'tyrant-ai',
     name: 'Tyrant AI',
     tagline: 'An autonomous AI hero playing a classic roguelike — live in your browser',
@@ -21,6 +10,17 @@ window.PROJECTS = [
     url: 'https://tyrantai.web.app',
     image: 'img/tyrant.png',
     icon: '⚔️',
+    featured: true
+  },
+  {
+    id: 'alethean',
+    name: 'Alethean Research',
+    tagline: 'An autonomous logic engine that hunts, formalizes, and proves theorems',
+    description: 'The autonomous research system behind Alethean discovers and formally verifies mathematical truth in Lean 4 — a two-phase pipeline producing machine-checked proofs and packaging them as papers, demos, and visualizations. Unconcealed truth between conjecture and proof.',
+    tags: ['Lean 4', 'Automated theorem proving', 'LLM research agents', 'Formal verification'],
+    url: 'https://alethean.org',
+    image: 'img/alethean.png',
+    icon: '⚙️',
     featured: false
   },
   {
