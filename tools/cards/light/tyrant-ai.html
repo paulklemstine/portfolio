@@ -1,0 +1,37 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1600px;height:600px;overflow:hidden}
+  body{background:#faf9f6;font-family:'Space Grotesk','Outfit',sans-serif;color:#17161a;position:relative}
+  .grid{position:absolute;inset:0;background-image:
+    linear-gradient(rgba(23,22,26,.05) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(23,22,26,.05) 1px,transparent 1px);
+    background-size:56px 56px;
+    -webkit-mask-image:radial-gradient(ellipse at 50% 50%,black 16%,transparent 74%);
+            mask-image:radial-gradient(ellipse at 50% 50%,black 16%,transparent 74%)}
+  .tag{position:absolute;font-family:'JetBrains Mono',monospace;font-size:15px;letter-spacing:.14em;color:#8a8791;text-transform:uppercase}
+  .tl{top:30px;left:34px}
+  .tl::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#6d4af2;margin-right:10px;vertical-align:1px}
+  .br{bottom:30px;right:34px}
+  .center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:1000px;text-align:center}
+  .tile{display:inline-flex;align-items:center;justify-content:center;width:94px;height:94px;font-size:42px;border:2px solid rgba(23,22,26,.14);border-radius:20px;background:#fff;margin-bottom:24px;box-shadow:0 1px 2px rgba(23,22,26,.05),0 10px 24px rgba(23,22,26,.06)}
+  .name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:70px;letter-spacing:-.02em;line-height:1.05}
+  .rulebar{width:64px;height:4px;border-radius:2px;background:linear-gradient(90deg,#6d4af2,#0fa3b0);margin:18px auto}
+  .tagline{font-family:'Outfit',sans-serif;font-size:26px;color:#4a4850;margin-top:16px}
+  .chips{margin-top:24px;display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-family:'JetBrains Mono',monospace;font-size:16px}
+  .chip{padding:7px 15px;border:1px solid rgba(23,22,26,.14);border-radius:999px;color:#4a4850;background:#fff}
+  .meta{margin-top:28px;font-family:'JetBrains Mono',monospace;font-size:16px;letter-spacing:.1em;color:#8a8791;text-transform:uppercase}
+  .meta b{color:#6d4af2;font-weight:700}
+</style></head>
+<body>
+  <div class="grid"></div>
+  <div class="tag tl">tyrantai.web.app</div>
+  <div class="tag br">system 02 / 07</div>
+  <div class="center">
+    <div class="tile">⚔️</div>
+    <div class="name">Tyrant AI</div>
+    <div class="rulebar"></div>
+    <div class="tagline">An autonomous AI hero playing a classic roguelike — live in your browser</div>
+    <div class="chips"><span class="chip">java</span><span class="chip">cheerpj / wasm</span><span class="chip">llm planning</span></div>
+    <div class="meta">Autonomous agent · <b>running in your browser right now</b> · tyrantai.web.app</div>
+  </div>
+</body></html>
