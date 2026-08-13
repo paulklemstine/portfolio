@@ -49,7 +49,7 @@ groups.push({ name: 'data', run() {
 
 groups.push({ name: 'chrome', run() {
   const mj = read('js/main.js');
-  ok('main.js defines nav template', mj.includes('nav.navbar'));
+  ok('main.js defines nav template', mj.includes('<nav class="navbar"'));
   ok('main.js injects footer', mj.includes('site-footer'));
   ok('main.js renders featured', mj.includes('renderFeatured') && mj.includes('[data-featured]'));
   ok('main.js renders preview', mj.includes('[data-preview]'));
