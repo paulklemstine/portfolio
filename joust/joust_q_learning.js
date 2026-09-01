@@ -1242,7 +1242,7 @@
       this.qBars = [];
       this.metricsEls = {};
       this.showVectors = true;
-      this.isMinimized = false;
+      this.isMinimized = true;
       this.initHUD();
     }
 
@@ -1467,13 +1467,19 @@
         }
       };
 
-      // Minimize / Expand Toggle
+            // Minimize / Expand Toggle
       this.btnMin.onclick = () => {
         this.isMinimized = !this.isMinimized;
         this.bodyEl.style.display = this.isMinimized ? "none" : "block";
         this.btnMin.textContent = this.isMinimized ? "+" : "−";
         this.container.style.width = this.isMinimized ? "210px" : "340px";
       };
+
+      if (this.isMinimized) {
+        this.bodyEl.style.display = "none";
+        this.btnMin.textContent = "+";
+        this.container.style.width = "210px";
+      }
 
       const btnLearn = this.container.querySelector("#hud-btn-learn");
       btnLearn.onclick = () => {
