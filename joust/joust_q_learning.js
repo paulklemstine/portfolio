@@ -338,7 +338,132 @@
 
       return { lethalDanger, dangerScore };
     }
-          findBestFutureInterceptSpatiotemporal(me, target, W, H, platforms, lookaheadTicks = 20) {
+              // 3.0-Second (100-Tick) Deep Macro-Trajectory Forecaster
+    simulateMacro3Seconds(me, enemies, W, H, platforms) {
+      if (!me || me.dead) return null;
+
+      const ticks = 100;
+      const w = W - 16;
+
+      const candidateMacroStyles = [
+        { name: "APEX_SOAR", ax: me.vx >= 0 ? 0.08 : -0.08, flapInterval: 15 },
+        { name: "SWEEP_LEFT", ax: -0.25, flapInterval: 25 },
+        { name: "SWEEP_RIGHT", ax: 0.25, flapInterval: 25 },
+        { name: "FAST_CLIMB", ax: 0, flapInterval: 8 },
+      ];
+
+      const playerMacroPredictions = [];
+
+      for (let s = 0; s < candidateMacroStyles.length; s++) {
+        const style = candidateMacroStyles[s];
+        let px = me.x;
+        let py = me.y;
+        let pvx = me.vx || 0;
+        let pvy = me.vy || 0;
+        const traj = [{ x: px, y: py, vx: pvx, vy: pvy, t: 0 }];
+
+        for (let t = 1; t <= ticks; t++) {
+          const doFlap = (t % style.flapInterval === 0 && py > 55);
+          const next = this.simStep(px, py, pvx, pvy, style.ax, doFlap, W, H, platforms);
+          px = next.x;
+          py = next.y;
+          pvx = next.vx;
+          pvy = next.vy;
+          traj.push({ x: px, y: py, vx: pvx, vy: pvy, t, grounded: next.grounded });
+        }
+
+        playerMacroPredictions.push({
+          style: style.name,
+          trajectory: traj,
+          endX: px,
+          endY: py
+        });
+      }
+
+      const enemyMacroPredictions = [];
+      const livingEnemies = (enemies || []).filter(e => e && !e.dead);
+
+      for (let i = 0; i < livingEnemies.length; i++) {
+        const en = livingEnemies[i];
+        let ex = en.x;
+        let ey = en.y;
+        let evx = en.vx || 0;
+        let evy = en.vy || 0;
+        const traj = [{ x: ex, y: ey, vx: evx, vy: evy, t: 0 }];
+
+        for (let t = 1; t <= ticks; t++) {
+          const flapProb = (ey > 150 && evy > 0.8) ? 0.35 : 0.05;
+          const doFlap = Math.random() < flapProb;
+          const ax = (en.facingRight ? 0.08 : -0.08);
+          const next = this.simStep(ex, ey, evx, evy, ax, doFlap, W, H, platforms);
+          ex = next.x;
+          ey = next.y;
+          evx = next.vx;
+          evy = next.vy;
+          traj.push({ x: ex, y: ey, vx: evx, vy: evy, t });
+        }
+
+        enemyMacroPredictions.push({
+          enemy: en,
+          trajectory: traj,
+          endX: ex,
+          endY: ey
+        });
+      }
+
+      let bestMacroPlan = playerMacroPredictions[0];
+      let maxPredictedFrags = 0;
+      let earliestKillTime = Infinity;
+
+      for (let s = 0; s < playerMacroPredictions.length; s++) {
+        const pPlan = playerMacroPredictions[s];
+        let predictedKills = 0;
+        let fatalRisk = false;
+
+        for (let e = 0; e < enemyMacroPredictions.length; e++) {
+          const ePred = enemyMacroPredictions[e];
+
+          for (let t = 1; t <= ticks; t++) {
+            const pPt = pPlan.trajectory[t];
+            const ePt = ePred.trajectory[t];
+
+            let dx = ePt.x - pPt.x;
+            if (dx > w / 2) dx -= w;
+            if (dx < -w / 2) dx += w;
+            const absDx = Math.abs(dx);
+            const dy = ePt.y - pPt.y;
+
+            if (absDx < 22 && Math.abs(dy) < 22) {
+              if (dy >= 6) {
+                predictedKills++;
+                if (t < earliestKillTime) earliestKillTime = t;
+              } else if (dy < -5) {
+                fatalRisk = true;
+              }
+            }
+          }
+        }
+
+        pPlan.predictedKills = predictedKills;
+        pPlan.hasFatalRisk = fatalRisk;
+
+        if (!fatalRisk && predictedKills > maxPredictedFrags) {
+          maxPredictedFrags = predictedKills;
+          bestMacroPlan = pPlan;
+        }
+      }
+
+      return {
+        ticks,
+        durationSeconds: 3.0,
+        playerPlans: playerMacroPredictions,
+        enemyPredictions: enemyMacroPredictions,
+        optimalMacroPlan: bestMacroPlan,
+        earliestKillTime: earliestKillTime === Infinity ? null : (earliestKillTime * 0.03).toFixed(2),
+        maxPredictedFrags
+      };
+    }
+    findBestFutureInterceptSpatiotemporal(me, target, W, H, platforms, lookaheadTicks = 20) {
       if (!me || !target || target.dead) return null;
 
       const w = W - 16;
@@ -1065,6 +1190,7 @@
       const doFlap = (lastAction === ACTIONS.FLAP || lastAction === ACTIONS.LEFT_FLAP || lastAction === ACTIONS.RIGHT_FLAP);
       const myPred = this.predictor.predictMe(me, ax, doFlap, CONFIG.lookaheadTicks, W, H, world.platform);
       this.lastMyPrediction = myPred;
+      this.macro3sSimulation = this.predictor.simulateMacro3Seconds(me, enemies, W, H, world.platform || []);
 
       if (target) {
         const enPred = this.predictor.predictEnemy(target, CONFIG.lookaheadTicks, W, H, world.platform);
