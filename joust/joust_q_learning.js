@@ -1241,6 +1241,8 @@
       this.ctx = null;
       this.qBars = [];
       this.metricsEls = {};
+      this.showVectors = true;
+      this.isMinimized = false;
       this.initHUD();
     }
 
@@ -1261,13 +1263,14 @@
             border: 2px solid #00ffcc;
             border-radius: 8px;
             box-shadow: 0 0 20px rgba(0, 255, 204, 0.45);
-            font-family: 'Courier New', monospace;
+            font-family: "Courier New", monospace;
             font-size: 11px;
             color: #e0f7fa;
             z-index: 999999;
             user-select: none;
             padding: 10px;
             backdrop-filter: blur(6px);
+            transition: width 0.2s ease;
           }
           #joust-q-hud .header {
             display: flex;
@@ -1280,6 +1283,11 @@
             font-size: 12px;
             color: #00ffcc;
             letter-spacing: 1px;
+          }
+          #joust-q-hud .header-btns {
+            display: flex;
+            gap: 4px;
+            align-items: center;
           }
           #joust-q-hud .stat-grid {
             display: grid;
@@ -1366,6 +1374,7 @@
             cursor: pointer;
             font-size: 10px;
             font-family: inherit;
+            transition: all 0.15s ease;
           }
           #joust-q-hud button:hover {
             background: #00796b;
@@ -1375,39 +1384,53 @@
             color: #000;
             font-weight: bold;
           }
+          #joust-q-hud .btn-icon {
+            flex: none;
+            padding: 2px 7px;
+            font-size: 11px;
+            font-weight: bold;
+          }
         </style>
         <div class="header">
-          <span>🛡️ ZERO-DEATH APEX SWOOP</span>
-          <span id="hud-status" class="badge badge-neutral">INIT</span>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span>🛡️ APEX AI</span>
+            <span id="hud-status" class="badge badge-neutral">INIT</span>
+          </div>
+          <div class="header-btns">
+            <button id="hud-btn-vectors" class="btn-icon active-toggle" title="Toggle Vector Graphics Overlay">🎨 Vectors: ON</button>
+            <button id="hud-btn-min" class="btn-icon" title="Minimize / Expand Overlay">−</button>
+          </div>
         </div>
-        <div class="stat-grid">
-          <div class="stat-row"><span>Kills / Deaths:</span><span id="hud-kd" class="stat-val">0 / 0 (0.00)</span></div>
-          <div class="stat-row"><span>Episode Reward:</span><span id="hud-rew" class="stat-val">+0.0</span></div>
-          <div class="stat-row"><span>Epsilon (ε):</span><span id="hud-eps" class="stat-val">0.16</span></div>
-          <div class="stat-row"><span>Replay Size:</span><span id="hud-replay" class="stat-val">0</span></div>
-          <div class="stat-row"><span>Avg Loss:</span><span id="hud-loss" class="stat-val">0.000</span></div>
-          <div class="stat-row"><span>Shield Status:</span><span id="hud-combo" class="stat-val">IRONCLAD</span></div>
-        </div>
-        <div class="q-section">
-          <div class="q-title">Q-Values & Zero-Death Action Vetoes</div>
-          <div id="hud-q-bars"></div>
-        </div>
-        <div class="controls">
-          <button id="hud-btn-learn" class="active-toggle">Learning: ON</button>
-          <button id="hud-btn-explore" class="active-toggle">Exploration: ON</button>
-          <button id="hud-btn-save">💾 Save Model</button>
-          <button id="hud-btn-export">⬇️ Export JSON</button>
-          <button id="hud-btn-reset" style="border-color: #ff5252; color: #ff5252;">⚠️ Reset Q</button>
+        <div id="hud-body">
+          <div class="stat-grid">
+            <div class="stat-row"><span>Kills / Deaths:</span><span id="hud-kd" class="stat-val">0 / 0 (0.00)</span></div>
+            <div class="stat-row"><span>Episode Reward:</span><span id="hud-rew" class="stat-val">+0.0</span></div>
+            <div class="stat-row"><span>Epsilon (ε):</span><span id="hud-eps" class="stat-val">0.16</span></div>
+            <div class="stat-row"><span>Replay Size:</span><span id="hud-replay" class="stat-val">0</span></div>
+            <div class="stat-row"><span>Avg Loss:</span><span id="hud-loss" class="stat-val">0.000</span></div>
+            <div class="stat-row"><span>Shield Status:</span><span id="hud-combo" class="stat-val">IRONCLAD</span></div>
+          </div>
+          <div class="q-section">
+            <div class="q-title">Q-Values & Zero-Death Action Vetoes</div>
+            <div id="hud-q-bars"></div>
+          </div>
+          <div class="controls">
+            <button id="hud-btn-learn" class="active-toggle">Learning: ON</button>
+            <button id="hud-btn-explore" class="active-toggle">Exploration: ON</button>
+            <button id="hud-btn-save">💾 Save Model</button>
+            <button id="hud-btn-export">⬇️ Export JSON</button>
+            <button id="hud-btn-reset" style="border-color: #ff5252; color: #ff5252;">⚠️ Reset Q</button>
+          </div>
         </div>
       `;
 
       document.body.appendChild(this.container);
 
-      const qContainer = this.container.querySelector('#hud-q-bars');
+      const qContainer = this.container.querySelector("#hud-q-bars");
       this.qBars = [];
       ACTION_NAMES.forEach((name, i) => {
-        const row = document.createElement('div');
-        row.className = 'q-bar-row';
+        const row = document.createElement("div");
+        row.className = "q-bar-row";
         row.innerHTML = `
           <div class="q-label">${name}</div>
           <div class="q-bar-bg"><div class="q-bar-fill" id="q-fill-${i}"></div></div>
@@ -1420,34 +1443,56 @@
         });
       });
 
+      this.bodyEl = this.container.querySelector("#hud-body");
+      this.btnMin = this.container.querySelector("#hud-btn-min");
+      this.btnVectors = this.container.querySelector("#hud-btn-vectors");
+
       this.metricsEls = {
-        status: this.container.querySelector('#hud-status'),
-        kd: this.container.querySelector('#hud-kd'),
-        rew: this.container.querySelector('#hud-rew'),
-        eps: this.container.querySelector('#hud-eps'),
-        replay: this.container.querySelector('#hud-replay'),
-        loss: this.container.querySelector('#hud-loss'),
-        combo: this.container.querySelector('#hud-combo'),
+        status: this.container.querySelector("#hud-status"),
+        kd: this.container.querySelector("#hud-kd"),
+        rew: this.container.querySelector("#hud-rew"),
+        eps: this.container.querySelector("#hud-eps"),
+        replay: this.container.querySelector("#hud-replay"),
+        loss: this.container.querySelector("#hud-loss"),
+        combo: this.container.querySelector("#hud-combo"),
       };
 
-      const btnLearn = this.container.querySelector('#hud-btn-learn');
+      // Vector Graphics Toggle
+      this.btnVectors.onclick = () => {
+        this.showVectors = !this.showVectors;
+        this.btnVectors.textContent = `🎨 Vectors: ${this.showVectors ? "ON" : "OFF"}`;
+        this.btnVectors.classList.toggle("active-toggle", this.showVectors);
+        if (!this.showVectors && this.ctx && this.canvas) {
+          this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        }
+      };
+
+      // Minimize / Expand Toggle
+      this.btnMin.onclick = () => {
+        this.isMinimized = !this.isMinimized;
+        this.bodyEl.style.display = this.isMinimized ? "none" : "block";
+        this.btnMin.textContent = this.isMinimized ? "+" : "−";
+        this.container.style.width = this.isMinimized ? "210px" : "340px";
+      };
+
+      const btnLearn = this.container.querySelector("#hud-btn-learn");
       btnLearn.onclick = () => {
         this.ctrl.isLearning = !this.ctrl.isLearning;
-        btnLearn.textContent = `Learning: ${this.ctrl.isLearning ? 'ON' : 'OFF'}`;
-        btnLearn.classList.toggle('active-toggle', this.ctrl.isLearning);
+        btnLearn.textContent = `Learning: ${this.ctrl.isLearning ? "ON" : "OFF"}`;
+        btnLearn.classList.toggle("active-toggle", this.ctrl.isLearning);
       };
 
-      const btnExplore = this.container.querySelector('#hud-btn-explore');
+      const btnExplore = this.container.querySelector("#hud-btn-explore");
       btnExplore.onclick = () => {
         this.ctrl.isExploring = !this.ctrl.isExploring;
-        btnExplore.textContent = `Exploration: ${this.ctrl.isExploring ? 'ON' : 'OFF'}`;
-        btnExplore.classList.toggle('active-toggle', this.ctrl.isExploring);
+        btnExplore.textContent = `Exploration: ${this.ctrl.isExploring ? "ON" : "OFF"}`;
+        btnExplore.classList.toggle("active-toggle", this.ctrl.isExploring);
       };
 
-      this.container.querySelector('#hud-btn-save').onclick = () => this.ctrl.saveModel();
-      this.container.querySelector('#hud-btn-export').onclick = () => this.ctrl.exportModelJSON();
-      this.container.querySelector('#hud-btn-reset').onclick = () => {
-        if (confirm('Reset Q-Learning neural network weights to random?')) this.ctrl.resetBrain();
+      this.container.querySelector("#hud-btn-save").onclick = () => this.ctrl.saveModel();
+      this.container.querySelector("#hud-btn-export").onclick = () => this.ctrl.exportModelJSON();
+      this.container.querySelector("#hud-btn-reset").onclick = () => {
+        if (confirm("Reset Q-Learning neural network weights to random?")) this.ctrl.resetBrain();
       };
 
       this.setupOverlayCanvas();
@@ -1548,7 +1593,11 @@
     }
 
     drawCanvasOverlay(me, state) {
-      if (!this.canvas || !this.ctx || !me || me.dead) return;
+      if (!this.canvas || !this.ctx) return;
+      if (!this.showVectors || !me || me.dead) {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        return;
+      }
 
       const scale = (typeof view !== 'undefined' && view.scale) || 3;
       const W = (typeof world !== 'undefined' && world.width) || 1168;
