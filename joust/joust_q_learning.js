@@ -338,7 +338,87 @@
 
       return { lethalDanger, dangerScore };
     }
-      getOverheadPlatformObstacle(me, platforms, W) {
+          findBestFutureInterceptSpatiotemporal(me, target, W, H, platforms, lookaheadTicks = 20) {
+      if (!me || !target || target.dead) return null;
+
+      const w = W - 16;
+      let bestT = null;
+      let minGap = Infinity;
+      let hasAdvantageAtIntercept = false;
+      let interceptMeX = me.x;
+      let interceptMeY = me.y;
+      let interceptEnX = target.x;
+      let interceptEnY = target.y;
+
+      let px = me.x;
+      let py = me.y;
+      let pvx = me.vx || 0;
+      let pvy = me.vy || 0;
+
+      let ex = target.x;
+      let ey = target.y;
+      let evx = target.vx || 0;
+      let evy = target.vy || 0;
+
+      for (let t = 1; t <= lookaheadTicks; t++) {
+        const pNext = this.simStep(px, py, pvx, pvy, 0, false, W, H, platforms);
+        px = pNext.x;
+        py = pNext.y;
+        pvx = pNext.vx;
+        pvy = pNext.vy;
+
+        const eNext = this.simStep(ex, ey, evx, evy, 0, false, W, H, platforms);
+        ex = eNext.x;
+        ey = eNext.y;
+        evx = eNext.vx;
+        evy = eNext.vy;
+
+        let dx = ex - px;
+        if (dx > w / 2) dx -= w;
+        if (dx < -w / 2) dx += w;
+        const absDx = Math.abs(dx);
+        const dy = ey - py;
+
+        const gap = Math.hypot(absDx, Math.max(0, -dy));
+
+        if (gap < minGap) {
+          minGap = gap;
+          bestT = t;
+          hasAdvantageAtIntercept = (dy > 6);
+          interceptMeX = px;
+          interceptMeY = py;
+          interceptEnX = ex;
+          interceptEnY = ey;
+        }
+
+        if (absDx < 20 && dy >= 6) {
+          return {
+            converges: true,
+            ticks: t,
+            minGap: 0,
+            hasAdvantage: true,
+            interceptMeX: px,
+            interceptMeY: py,
+            interceptEnX: ex,
+            interceptEnY: ey,
+            isRightPlaceRightTime: true
+          };
+        }
+      }
+
+      return {
+        converges: minGap < 40,
+        ticks: bestT || lookaheadTicks,
+        minGap,
+        hasAdvantage: hasAdvantageAtIntercept,
+        interceptMeX,
+        interceptMeY,
+        interceptEnX,
+        interceptEnY,
+        isRightPlaceRightTime: (minGap < 35 && hasAdvantageAtIntercept)
+      };
+    }
+    getOverheadPlatformObstacle(me, platforms, W) {
       if (!platforms || platforms.length === 0 || !me) return { blocked: false, escapeDir: 0, waypointX: me ? me.x : 0, gap: Infinity };
 
       const meX = me.x;
@@ -1487,6 +1567,7 @@
       this.lastFragTime = 0;
       this.currentCombo = 0;
       this.lastTargetDist = null;
+      this.lastPredictedGap = null;
       this.comboFX = new MortalKombatComboFX();
     }
 
@@ -1640,6 +1721,37 @@
           }
         } else {
           this.lastTargetDist = null;
+        }
+
+                // 8. "RIGHT PLACE AT THE RIGHT TIME" - SPATIOTEMPORAL INTERCEPT REWARD
+        if (this.ctrl && this.ctrl.env && this.ctrl.env.predictor && target && !target.dead) {
+          const spatiotemporal = this.ctrl.env.predictor.findBestFutureInterceptSpatiotemporal(
+            me,
+            target,
+            W,
+            worldHeight,
+            world.platform || [],
+            20
+          );
+
+          if (spatiotemporal) {
+            if (spatiotemporal.isRightPlaceRightTime) {
+              const timeUrgency = Math.max(1, 20 - spatiotemporal.ticks);
+              reward += 6.5 * (timeUrgency / 20.0);
+
+              if (spatiotemporal.ticks <= 8) {
+                reward += 12.0; // Imminent guaranteed strike! Right place, right time!
+              }
+            }
+
+            if (this.lastPredictedGap !== undefined && this.lastPredictedGap !== null) {
+              const gapDelta = this.lastPredictedGap - spatiotemporal.minGap;
+              if (gapDelta > 0.05 && spatiotemporal.hasAdvantage) {
+                reward += gapDelta * 3.2; // Massive reward for trajectory convergence!
+              }
+            }
+            this.lastPredictedGap = spatiotemporal.minGap;
+          }
         }
 
         // Relentless swift hunting reward for nearest enemy
