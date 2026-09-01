@@ -338,6 +338,60 @@
 
       return { lethalDanger, dangerScore };
     }
+      getOverheadPlatformObstacle(me, platforms, W) {
+      if (!platforms || platforms.length === 0 || !me) return { blocked: false, escapeDir: 0, waypointX: me ? me.x : 0, gap: Infinity };
+
+      const meX = me.x;
+      const meY = me.y;
+      const w = W - 16;
+
+      let nearestObs = null;
+      let minGap = Infinity;
+
+      for (let i = 0; i < platforms.length; i++) {
+        const p = platforms[i];
+        const px1 = p.x1 !== undefined ? p.x1 : p.x;
+        const px2 = p.x2 !== undefined ? p.x2 : p.x + 80;
+        const py1 = p.y1 !== undefined ? p.y1 : p.y;
+        const py2 = p.y2 !== undefined ? p.y2 : p.y + 12;
+
+        const overheadDy = meY - py2;
+        if (overheadDy > -10 && overheadDy < 85) {
+          let inSpan = (meX + 22 > px1 && meX - 6 < px2);
+          if (!inSpan) {
+            const wrapX = meX > w / 2 ? meX - w : meX + w;
+            inSpan = (wrapX + 22 > px1 && wrapX - 6 < px2);
+          }
+
+          if (inSpan) {
+            if (overheadDy < minGap) {
+              minGap = overheadDy;
+              nearestObs = { px1, px2, py1, py2 };
+            }
+          }
+        }
+      }
+
+      if (nearestObs) {
+        let dLeft = meX - (nearestObs.px1 - 24);
+        let dRight = (nearestObs.px2 + 24) - meX;
+        if (dLeft < 0) dLeft += w;
+        if (dRight < 0) dRight += w;
+
+        const escapeDir = dLeft < dRight ? -1 : 1;
+        const waypointX = escapeDir === -1 ? (nearestObs.px1 - 24) : (nearestObs.px2 + 24);
+
+        return {
+          blocked: true,
+          escapeDir,
+          waypointX,
+          py2: nearestObs.py2,
+          gap: minGap
+        };
+      }
+
+      return { blocked: false, escapeDir: 0, waypointX: meX, gap: Infinity };
+    }
   }
 
   // ==========================================================================
@@ -910,14 +964,16 @@
       return true;
     }
 
-    filterAction(rawQValues, lastAction, me, isEmergency = false, inLethalDive = false, env = null) {
+        filterAction(rawQValues, lastAction, me, isEmergency = false, inLethalDive = false, env = null) {
       const alpha = 0.65;
       const stickyBonus = (inLethalDive || isEmergency) ? 0.05 : 0.40;
 
-      const W = (typeof world !== 'undefined' && world.width) || 1168;
-      const H = (typeof world !== 'undefined' && world.height) || 600;
-      const platforms = (typeof world !== 'undefined' && world.platform) || [];
+      const W = (typeof world !== "undefined" && world.width) || 1168;
+      const H = (typeof world !== "undefined" && world.height) || 600;
+      const platforms = (typeof world !== "undefined" && world.platform) || [];
       const enemies = env ? env.getEnemies() : [];
+
+      const overhead = (env && me) ? env.predictor.getOverheadPlatformObstacle(me, platforms, W) : { blocked: false };
 
       let bestAction = 0;
       let maxEffectiveQ = -Infinity;
@@ -930,20 +986,39 @@
         if (env && me) {
           const dangerCheck = env.predictor.checkActionLethalDanger(me, a, enemies, 14, W, H, platforms);
           if (dangerCheck.lethalDanger) {
-            // Absolute veto: this candidate action would cause death!
             effectiveQ = -999999.0;
           } else if (dangerCheck.dangerScore > 0) {
             effectiveQ -= dangerCheck.dangerScore * 3.0;
           }
 
-          // Lookahead terrain bonk penalty
+          // 2. Lookahead terrain bonk & obstacle collision penalty
           const terrainRisk = env.predictor.checkActionCollisionRisk(me, a, 10, W, H, platforms);
           if (terrainRisk > 0) {
-            effectiveQ -= terrainRisk * 0.8;
+            effectiveQ -= terrainRisk * 1.2;
           }
         }
 
-        // Lethal dive prior: cut flaps to allow pure gravity acceleration
+        // 3. Platform Obstacle Routing: glide horizontally around platform edges
+        if (overhead.blocked && !isEmergency) {
+          const isFlap = (a === ACTIONS.FLAP || a === ACTIONS.LEFT_FLAP || a === ACTIONS.RIGHT_FLAP);
+          if (isFlap && overhead.gap < 50) {
+            effectiveQ -= 5.0; // Inhibit head bonking
+          }
+          if (overhead.escapeDir === -1 && (a === ACTIONS.LEFT || a === ACTIONS.LEFT_FLAP)) {
+            effectiveQ += 3.5; // Boost left bypass
+          } else if (overhead.escapeDir === 1 && (a === ACTIONS.RIGHT || a === ACTIONS.RIGHT_FLAP)) {
+            effectiveQ += 3.5; // Boost right bypass
+          }
+        }
+
+        // 4. Grounded Take-off Assist: Never linger grounded on platforms
+        if (me && me.grounded && !isEmergency) {
+          if (a === ACTIONS.LEFT_FLAP || a === ACTIONS.RIGHT_FLAP || a === ACTIONS.FLAP) {
+            effectiveQ += 4.0;
+          }
+        }
+
+        // Lethal dive prior
         if (inLethalDive && (a === ACTIONS.FLAP || a === ACTIONS.LEFT_FLAP || a === ACTIONS.RIGHT_FLAP)) {
           effectiveQ -= 3.5;
         }
@@ -1743,7 +1818,34 @@
       }
 
       // Execute chosen action
-      this.actions.execute(selectedAction, me, isEmergency, inLethalDive);
+            // Anti-Stuck Watchdog: detect position stalls
+      if (!this.lastPositions) this.lastPositions = [];
+      const nowMs = Date.now();
+      this.lastPositions.push({ x: me.x, y: me.y, time: nowMs });
+      if (this.lastPositions.length > 25) this.lastPositions.shift();
+
+      let isStuck = false;
+      if (this.lastPositions.length >= 20) {
+        const oldest = this.lastPositions[0];
+        const current = this.lastPositions[this.lastPositions.length - 1];
+        const distMoved = Math.hypot(current.x - oldest.x, current.y - oldest.y);
+        const timeElapsed = current.time - oldest.time;
+        if (distMoved < 16 && timeElapsed > 750) {
+          isStuck = true;
+        }
+      }
+
+      // Execute action / emergency bypass
+      let actionToExecute = selectedAction;
+      if (isStuck && !isEmergency) {
+        const W = (typeof world !== "undefined" && world.width) || 1168;
+        const escapeDir = me.x > W / 2 ? ACTIONS.LEFT_FLAP : ACTIONS.RIGHT_FLAP;
+        actionToExecute = escapeDir;
+        this.actions.triggerFlap(nowMs, 50, 40);
+        this.lastPositions = [];
+      }
+
+      this.actions.execute(actionToExecute, me, isEmergency || isStuck, inLethalDive);
 
       this.nextState.set(this.currentState);
       this.lastAction = selectedAction;
