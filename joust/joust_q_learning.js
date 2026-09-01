@@ -1060,7 +1060,80 @@
       return true;
     }
 
-        filterAction(rawQValues, lastAction, me, isEmergency = false, inLethalDive = false, env = null) {
+            computeGrandmasterTacticalAction(me, env, W, H, platforms) {
+      if (!me || me.dead) return ACTIONS.IDLE;
+
+      const enemies = env ? env.getEnemies() : [];
+      const target = env ? env.lockedTarget : null;
+      const threat = env ? env.threatEnemy : null;
+
+      // 1. REFLEXIVE EMERGENCY DEFENSE: evade overhead threat
+      if (threat && !threat.dead) {
+        const tDx = env.shortestToroidalDx(me.x, threat.x, W);
+        const tDy = threat.y - me.y;
+        if (tDy < 5 && Math.abs(tDx) < CONFIG.lethalThreatRadiusX) {
+          // Threat is above us: full lateral evasion thrust away from threat vector
+          return tDx >= 0 ? ACTIONS.LEFT_FLAP : ACTIONS.RIGHT_FLAP;
+        }
+      }
+
+      // 2. OBSTACLE HORIZONTAL BYPASS: if underneath platform, escape laterally before climbing
+      const overhead = env ? env.predictor.getOverheadPlatformObstacle(me, platforms, W) : { blocked: false };
+      if (overhead.blocked && overhead.gap < 55) {
+        return overhead.escapeDir === -1 ? ACTIONS.LEFT : ACTIONS.RIGHT;
+      }
+
+      // 3. GROUNDED TAKE-OFF LAUNCH: never walk on platforms
+      if (me.grounded) {
+        return me.x > W / 2 ? ACTIONS.LEFT_FLAP : ACTIONS.RIGHT_FLAP;
+      }
+
+      // 4. LETHAL FALCON DIVE (GUILLOTINE STRIKE): confirmed altitude advantage + aligned
+      if (target && !target.dead) {
+        const dx = env.shortestToroidalDx(me.x, target.x, W);
+        const dy = target.y - me.y; // Positive = target is BELOW me
+
+        if (dy >= 18 && Math.abs(dx) < 32) {
+          // Perfect strike alignment: pure gravity dive, steer horizontally towards target
+          if (dx < -3) return ACTIONS.LEFT;
+          if (dx > 3) return ACTIONS.RIGHT;
+          return ACTIONS.IDLE; // Direct vertical drop
+        }
+
+        // 5. HIGH GROUND ACQUISITION & APEX HEGEMONY:
+        // If we do not have confirmed height advantage over target, climb first!
+        if (dy < 24 || me.y > CONFIG.apexCruisingMaxY) {
+          // Target intercept horizontal direction
+          const targetDir = dx > 0 ? ACTIONS.RIGHT_FLAP : ACTIONS.LEFT_FLAP;
+
+          // Maintain smooth upward climb cadence
+          if (me.y > 60 && me.vy > -1.2) {
+            return targetDir;
+          }
+          return dx > 0 ? ACTIONS.RIGHT : ACTIONS.LEFT;
+        }
+
+        // 6. APEX CRUISE & TOROIDAL AMBUSH:
+        // We have high ground (y in [45, 80]), closing in horizontally from above
+        const ambushDx = env.shortestToroidalDx(me.x, target.x + (target.vx || 0) * 8, W);
+        const flapCadence = (me.y > 65 && me.vy > 0.3);
+
+        if (ambushDx < -15) {
+          return flapCadence ? ACTIONS.LEFT_FLAP : ACTIONS.LEFT;
+        } else if (ambushDx > 15) {
+          return flapCadence ? ACTIONS.RIGHT_FLAP : ACTIONS.RIGHT;
+        } else {
+          return flapCadence ? ACTIONS.FLAP : ACTIONS.IDLE;
+        }
+      }
+
+      // 7. DEFAULT APEX SOARING PATROL
+      if (me.y > 80) return me.x > W / 2 ? ACTIONS.LEFT_FLAP : ACTIONS.RIGHT_FLAP;
+      if (me.y > 60 && me.vy > 0.35) return ACTIONS.FLAP;
+      return ACTIONS.IDLE;
+    }
+
+    filterAction(rawQValues, lastAction, me, isEmergency = false, inLethalDive = false, env = null) {
       const alpha = 0.65;
       const stickyBonus = (inLethalDive || isEmergency) ? 0.05 : 0.40;
 
@@ -1071,12 +1144,18 @@
 
       const overhead = (env && me) ? env.predictor.getOverheadPlatformObstacle(me, platforms, W) : { blocked: false };
 
+      const gmAction = (env && me) ? this.computeGrandmasterTacticalAction(me, env, W, H, platforms) : -1;
       let bestAction = 0;
       let maxEffectiveQ = -Infinity;
 
       for (let a = 0; a < rawQValues.length; a++) {
         this.smoothedQ[a] = alpha * rawQValues[a] + (1 - alpha) * this.smoothedQ[a];
         let effectiveQ = this.smoothedQ[a] + (a === lastAction && !isEmergency ? stickyBonus : 0);
+
+        // Grandmaster Expert Prior: boost professional tactical choice
+        if (gmAction === a) {
+          effectiveQ += 5.5;
+        }
 
         // 1. HARD VETO: ZERO-DEATH LETHAL DANGER CHECK
         if (env && me) {
@@ -1968,48 +2047,6 @@
         ctx.fillStyle = isEmergency ? '#ff1744' : (inLethalDive ? '#ffeb3b' : '#00ffcc');
         ctx.fill();
       }
-
-      // Render Global Optimal Elimination Tour Constellation
-      const tourWps = this.ctrl.env.optimalTourWaypoints;
-      if (tourWps && tourWps.length > 1) {
-        ctx.beginPath();
-        ctx.strokeStyle = "rgba(255, 215, 0, 0.75)";
-        ctx.lineWidth = 2.5;
-        ctx.setLineDash([5, 3]);
-
-        for (let i = 0; i < tourWps.length; i++) {
-          const wp = tourWps[i];
-          const wx = (wp.x + 8) * scale;
-          const wy = (wp.y + 10) * scale;
-          if (i === 0) ctx.moveTo(meCenterX, meCenterY);
-          else ctx.lineTo(wx, wy);
-        }
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Render target sequence badges along the optimal tour
-        for (let i = 1; i < tourWps.length; i++) {
-          const wp = tourWps[i];
-          const wx = (wp.x + 8) * scale;
-          const wy = (wp.y + 10) * scale;
-
-          ctx.beginPath();
-          ctx.arc(wx, wy, 6 * scale * 0.5, 0, 2 * Math.PI);
-          ctx.fillStyle = i === 1 ? "#ff0055" : (i === 2 ? "#00ffcc" : "#ffeb3b");
-          ctx.fill();
-          ctx.strokeStyle = "#ffffff";
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-
-          const label = i === 1 ? "1: STRIKE" : (i === 2 ? "2: CHAIN" : "3: COMBO");
-          const bSize = Math.max(9, Math.round(3 * scale));
-          ctx.font = `bold ${bSize}px monospace`;
-          ctx.fillStyle = "#ffffff";
-          ctx.textAlign = "center";
-          ctx.fillText(label, wx, wy - 8 * scale * 0.5);
-        }
-      }
-
       const target = this.ctrl.env.lockedTarget;
       if (target) {
         const isAdvantage = me.y < target.y - 5;
