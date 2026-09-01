@@ -1256,8 +1256,8 @@
         <style>
           #joust-q-hud {
             position: fixed;
-            top: 10px;
-            right: 10px;
+            bottom: 12px;
+            right: 12px;
             width: 340px;
             background: rgba(8, 14, 26, 0.94);
             border: 2px solid #00ffcc;
@@ -1283,11 +1283,6 @@
             font-size: 12px;
             color: #00ffcc;
             letter-spacing: 1px;
-          }
-          #joust-q-hud .header-btns {
-            display: flex;
-            gap: 4px;
-            align-items: center;
           }
           #joust-q-hud .stat-grid {
             display: grid;
@@ -1396,10 +1391,7 @@
             <span>🛡️ APEX AI</span>
             <span id="hud-status" class="badge badge-neutral">INIT</span>
           </div>
-          <div class="header-btns">
-            <button id="hud-btn-vectors" class="btn-icon active-toggle" title="Toggle Vector Graphics Overlay">🎨 Vectors: ON</button>
-            <button id="hud-btn-min" class="btn-icon" title="Minimize / Expand Overlay">−</button>
-          </div>
+          <button id="hud-btn-min" class="btn-icon" title="Minimize / Expand Overlay">−</button>
         </div>
         <div id="hud-body">
           <div class="stat-grid">
@@ -1415,6 +1407,7 @@
             <div id="hud-q-bars"></div>
           </div>
           <div class="controls">
+            <button id="hud-btn-vectors" class="active-toggle" title="Toggle Vector Graphics Overlay">🎨 Vectors: ON</button>
             <button id="hud-btn-learn" class="active-toggle">Learning: ON</button>
             <button id="hud-btn-explore" class="active-toggle">Exploration: ON</button>
             <button id="hud-btn-save">💾 Save Model</button>
@@ -1467,7 +1460,7 @@
         }
       };
 
-            // Minimize / Expand Toggle
+      // Minimize / Expand Toggle
       this.btnMin.onclick = () => {
         this.isMinimized = !this.isMinimized;
         this.bodyEl.style.display = this.isMinimized ? "none" : "block";
