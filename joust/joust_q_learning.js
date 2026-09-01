@@ -1898,34 +1898,6 @@
         ctx.textAlign = 'center';
         ctx.fillText(tagText, meCenterX, tagY);
       }
-
-      if (Math.abs(me.vx) > 0.05 || Math.abs(me.vy) > 0.05) {
-        const arrowEndX = meCenterX + me.vx * 15 * scale;
-        const arrowEndY = meCenterY + me.vy * 15 * scale;
-
-        ctx.beginPath();
-        ctx.strokeStyle = '#00ffff';
-        ctx.lineWidth = 2;
-        ctx.moveTo(meCenterX, meCenterY);
-        ctx.lineTo(arrowEndX, arrowEndY);
-        ctx.stroke();
-
-        const angle = Math.atan2(me.vy, me.vx);
-        const headLen = 6 * scale * 0.5;
-        ctx.beginPath();
-        ctx.fillStyle = '#00ffff';
-        ctx.moveTo(arrowEndX, arrowEndY);
-        ctx.lineTo(
-          arrowEndX - headLen * Math.cos(angle - Math.PI / 6),
-          arrowEndY - headLen * Math.sin(angle - Math.PI / 6)
-        );
-        ctx.lineTo(
-          arrowEndX - headLen * Math.cos(angle + Math.PI / 6),
-          arrowEndY - headLen * Math.sin(angle + Math.PI / 6)
-        );
-        ctx.closePath();
-        ctx.fill();
-      }
     }
 
     destroy() {
