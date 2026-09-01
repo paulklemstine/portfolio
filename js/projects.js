@@ -24,6 +24,17 @@ window.PROJECTS = [
     spotlight: true
   },
   {
+    id: 'joust-ai',
+    name: 'Joust AI (Apex Predator)',
+    tagline: 'An online Deep Q-Learning agent with zero-death flight physics & predictive swoops',
+    description: 'A real-time arcade jousting agent trained online via Deep Q-Networks (DQN). Features pure JavaScript vectorized matrix tensor operations, Adam optimization with Polyak target synchronization, a 14-tick forward kinematics raycaster, and an ironclad zero-death lethal evasion shield executing graceful parabolic swoops and hawk dives.',
+    tags: ['Deep Q-Learning', 'Neural Networks', 'Reinforcement Learning', 'Autonomous Game AI', 'Physics Simulation'],
+    url: 'joust/index.html',
+    image: 'img/joust.png',
+    icon: '🦅',
+    featured: true
+  },
+  {
     id: 'geems',
     name: 'Geems',
     tagline: 'A choose-your-own-adventure secretly powered by an AI psychologist',

@@ -1,0 +1,210 @@
+<html>
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, maximum-scale=1,user-scalable=no">
+		<title>Massively Multiplayer Online Deathmatch Joust</title>
+		<style>
+			@font-face {
+				font-family: 'pixelmix';
+				src: url('images/pixelmix.ttf');
+				}
+				:root {
+					--borderWidth: 20px;
+					--baseFontSize: 16px;
+					--bigFontSize: 26px;
+					--smallFontSize: 8px;
+					--nameTagLeft: -180px;
+					--nameTagTop: -32px;
+					--menuLineHeight: 32px;
+				}
+			body,html {
+				width:100%;
+				height:100%;
+				margin: 0;
+				padding: 0;
+				background:transparent;
+				font-family: pixelmix, monospace;
+				font-size:var(--baseFontSize);
+				color:#fff;
+				overflow: hidden;
+			}
+			#clipframe
+			{
+				width:100vw;
+				height:100vh;
+				background: transparent;
+				overflow:hidden;
+				position:relative;
+				margin:auto;
+			}
+			#arena {
+				position:absolute;
+				width:100%;
+				height:100%;
+			}
+			#scoreboard
+			{
+				padding:10px;
+				position:absolute;
+				left:0;
+				top:100px;
+				color:#fff;
+				font-size: var(--smallFontSize);
+				display:none;
+			}
+			#scoreboard li { list-style: none; }
+			#scoreboard .red { color:red; }
+			#scoreboard .ylo { color:yellow; }
+			#scoreboard .blu { color:#00aeff; }
+			#scoreleft, #scoreright, #scorecenter
+			{
+				position:absolute;
+				padding:10px;
+				top:0;
+				color:yellow;
+			}
+			#scoreright { color:red; text-align:right; right:0; }
+			#scorecenter { width:100%; text-align: center; color:#00aeff; }
+			#timer
+			{
+				padding:10px;
+				position:absolute;
+				left:0;
+				top:50px;
+				width:100%;
+				text-align: center;
+			}
+			#paused
+			{
+				position:absolute;
+				left:0; top:0;
+				padding:100px 0;
+				text-align: center;
+				font-size:var(--bigFontSize);
+				width:100vw; height:100vh;
+				background:rgba(255,255,255,0.3);
+				display:none;
+			}
+			#startscreen
+			{
+				position:absolute;
+				left:0; top:0;
+				padding:100px 0;
+				text-align: center;
+				font-size:var(--bigFontSize);
+				width:100vw; height:100vh;
+				background:rgba(0,0,0,1);
+			}
+			img { image-rendering: pixelated; }
+			.player
+			{
+				position:absolute;
+				left: 0px; top: -100px;
+				width : 40px; height : 50px;
+				z-index : 21;
+			}
+			.player>img { position: absolute; }
+			.nametag
+			{
+				color: #999;
+				position: absolute;
+				width: 400;
+				text-align: center;
+				left: var(--nameTagLeft);
+				top: var(--nameTagTop);
+			}
+			.nametag.red { color:rgba(255,0,0,1); }
+			.nametag.ylo { color:rgba(255,255,0,1); }
+			.nametag.blu { color:rgba(0,174,255,1); }
+			.player.you>.nametag { font-weight: bold; color: #000; }
+			.platform { position:absolute; z-index: 22; }
+			#menubutton
+			{
+				position:absolute;
+				bottom:40px; left:50%; margin-left:-30px;
+				width:60px; height:40px;
+				border:solid 2px rgba(255,255,0,0.2);
+				border-width: var(--borderWidth);
+				color:rgba(255,255,0,0.2);
+				font-size:var(--baseFontSize);
+				line-height:38px; padding-left:3px;
+				text-align:center;
+			}
+			#menu
+			{
+				position:absolute;
+				bottom:120px; left:50vw; margin-left:-45vw;
+				width:90vw; height:50vh;
+				border:solid 2px rgba(255,104,0,1);
+				background:rgba(71,33,0,1);
+				border-width: var(--borderWidth);
+				color:#fff;
+				font-size:var(--bigFontSize);
+				text-align:center;
+				display:none;
+			}
+			#menu li { margin-top:0px; list-style: none; cursor:pointer; width:100%; line-height: var(--menuLineHeight); }
+			#menu li:hover { background:rgba(151,71,0,1); }
+			#touchcontrols { position:absolute; width:100vw; height:100vh; display:none; }
+			#touchleft, #touchright, #touchflapleft, #touchflapright
+			{
+				position:absolute; bottom:40px;
+				width:120px; height:80px;
+				border:solid 2px rgba(255,255,0,0.2);
+				border-width: var(--borderWidth);
+				color:rgba(255,255,0,0.2);
+				font-size:var(--bigFontSize);
+				line-height:80px; text-align:center;
+			}
+			#touchleft, #touchflapleft { left:40px; }
+			#touchright, #touchflapright { right:40px; }
+			#touchflapleft, #touchflapright { bottom:160px; line-height: 100px; }
+			.alert
+			{
+				position:absolute; top:0;
+				border:solid 2px rgba(255,104,0,1);
+				background:rgba(71,33,0,1);
+				width:100%; padding:10px;
+				display:block; text-align: center;
+				opacity:1;
+			}
+		</style>
+	</head>
+	<body>
+		<a href="../projects.html" style="position:fixed; top:12px; left:12px; z-index:999999; background:rgba(8,14,26,0.9); border:1px solid #00ffcc; color:#00ffcc; padding:6px 12px; border-radius:4px; text-decoration:none; font-size:11px; font-family:'Courier New', monospace; font-weight:bold; backdrop-filter:blur(4px); box-shadow:0 0 10px rgba(0,255,204,0.3);">← Back to Portfolio</a>
+		<iframe src="https://superacid.web.app" style="position: absolute; left: 0; top: 0; width: 100vw; height: 100vh; border: none; z-index: -100; pointer-events: none;"></iframe>
+		<div id="clipframe">
+			<div id="arena"></div>
+			<div id="paused">
+				Round ended. Next round in
+				<span id="pausedTimer"></span>
+			</div>
+			<div id="touchcontrols">
+				<div id="touchflapleft">^</div>
+				<div id="touchflapright">^</div>
+				<div id="touchleft">&lt;</div>
+				<div id="touchright">&gt;</div>
+			</div>
+			<div id="menubutton">=</div>
+			<div id="menu">
+				<li id="changeteam">Change Team [T]</li>
+				<li id="toggleleaderboard">Toggle Leaderboard [Tab]</li>
+				<li id="togglesound">Toggle Sound [V]</li>
+				<li id="unstick">I'm Stuck! [Q]</li>
+			</div>
+		</div>
+		<div id="scoreboard"></div>
+		<div id="scoreleft"></div>
+		<div id="scoreright"></div>
+		<div id="scorecenter"></div>
+		<div id="timer"></div>
+		<div id="startscreen">
+			<img src="images/title01.gif" width="100%" alt="" border="0" style="margin-bottom:50px;">
+			Click/Tap to start
+		</div>
+	</body>
+</html>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="game_common.js"></script>
+<script src="net.js"></script>
+<script src="game_client.js"></script>
+<script src="joust_q_learning.js"></script>
