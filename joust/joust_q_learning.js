@@ -1126,6 +1126,180 @@
     }
   }
 
+    // ==========================================================================
+  // MORTAL KOMBAT STYLE COMBO BANNER & PARTICLE FX ENGINE
+  // ==========================================================================
+  class MortalKombatComboFX {
+    constructor() {
+      this.particles = [];
+      this.floatingTexts = [];
+      this.audioCtx = null;
+      this.initDOM();
+    }
+
+    initDOM() {
+      const old = document.getElementById("mk-combo-container");
+      if (old) old.remove();
+
+      this.domContainer = document.createElement("div");
+      this.domContainer.id = "mk-combo-container";
+      this.domContainer.innerHTML = `
+        <style>
+          #mk-combo-container {
+            position: fixed;
+            top: 24%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 999998;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: "Impact", "Arial Black", "Trebuchet MS", sans-serif;
+            text-align: center;
+          }
+          .mk-banner {
+            animation: mk-punch-in 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin-bottom: 8px;
+            position: relative;
+            filter: drop-shadow(0 0 25px rgba(255, 0, 50, 0.95));
+          }
+          .mk-title {
+            font-size: 48px;
+            font-weight: 900;
+            background: linear-gradient(180deg, #ffffff 0%, #ffeb3b 30%, #ff3d00 70%, #b71c1c 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            -webkit-text-stroke: 2px #000;
+            text-shadow: 0 0 30px rgba(255, 60, 0, 0.9), 0 0 60px rgba(255, 0, 0, 0.8);
+            line-height: 1.1;
+          }
+          .mk-subtitle {
+            font-size: 22px;
+            font-weight: 800;
+            color: #00ffcc;
+            text-shadow: 0 0 14px #00ffcc, 0 0 28px rgba(0, 255, 204, 0.85), 2px 2px 0 #000;
+            letter-spacing: 5px;
+            margin-top: 2px;
+          }
+          .mk-sub-streak {
+            font-size: 14px;
+            font-weight: bold;
+            color: #fff;
+            background: rgba(183, 28, 28, 0.9);
+            border: 1px solid #ffeb3b;
+            padding: 3px 16px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 5px;
+            box-shadow: 0 0 20px rgba(255, 235, 59, 0.85);
+            letter-spacing: 2px;
+          }
+          @keyframes mk-punch-in {
+            0% {
+              transform: scale(0.1) rotate(-14deg);
+              opacity: 0;
+            }
+            22% {
+              transform: scale(1.45) rotate(4deg);
+              opacity: 1;
+            }
+            45% {
+              transform: scale(0.92) rotate(-2deg);
+              opacity: 1;
+            }
+            75% {
+              transform: scale(1.05) rotate(0deg);
+              opacity: 1;
+            }
+            100% {
+              transform: scale(1.0) translateY(-40px);
+              opacity: 0;
+            }
+          }
+        </style>
+      `;
+      document.body.appendChild(this.domContainer);
+    }
+
+    triggerCombo(comboCount, killsGained, x, y) {
+      let title = "ELIMINATED!";
+      let sub = "FIRST BLOOD";
+      let pts = comboCount * 250;
+
+      if (comboCount === 2) {
+        title = "DOUBLE KILL!";
+        sub = "🔥 SWIFT COMBO x2 🔥";
+        pts = 650;
+      } else if (comboCount === 3) {
+        title = "TRIPLE KILL!";
+        sub = "⚡ MULTI-STRIKE x3 ⚡";
+        pts = 1300;
+      } else if (comboCount === 4) {
+        title = "ULTRA COMBO!";
+        sub = "💀 RELENTLESS CHAIN x4 💀";
+        pts = 2200;
+      } else if (comboCount >= 5) {
+        title = "FATALITY!";
+        sub = "👑 GODLIKE RAMPAGE x" + comboCount + " 👑";
+        pts = 3500 + (comboCount - 5) * 1000;
+      }
+
+      const banner = document.createElement("div");
+      banner.className = "mk-banner";
+      banner.innerHTML = `
+        <div class="mk-title">${title}</div>
+        <div class="mk-subtitle">${sub}</div>
+        <div class="mk-sub-streak">+${pts} COMBO POINTS</div>
+      `;
+      this.domContainer.appendChild(banner);
+
+      setTimeout(() => banner.remove(), 1500);
+
+      this.playArcadeSting(comboCount);
+    }
+
+    playArcadeSting(comboCount) {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        if (!this.audioCtx) this.audioCtx = new AudioCtx();
+        if (this.audioCtx.state === "suspended") this.audioCtx.resume();
+
+        const ctx = this.audioCtx;
+        const now = ctx.currentTime;
+
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        const baseFreq = 160 + comboCount * 60;
+        osc1.type = "sawtooth";
+        osc1.frequency.setValueAtTime(baseFreq, now);
+        osc1.frequency.exponentialRampToValueAtTime(baseFreq * 2.2, now + 0.16);
+
+        osc2.type = "triangle";
+        osc2.frequency.setValueAtTime(baseFreq * 1.5, now);
+        osc2.frequency.exponentialRampToValueAtTime(baseFreq * 3.0, now + 0.18);
+
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 0.35);
+        osc2.stop(now + 0.35);
+      } catch (e) {}
+    }
+  }
+
   // ==========================================================================
   // ZERO-DEATH REWARD SHAPING & SURVIVAL ENGINE
   // ==========================================================================
@@ -1137,6 +1311,7 @@
       this.hadTerrainBump = false;
       this.lastFragTime = 0;
       this.currentCombo = 0;
+      this.comboFX = new MortalKombatComboFX();
     }
 
     computeReward(me, state, action, enemies, worldHeight) {
@@ -1145,20 +1320,40 @@
       let reward = 0.0;
       const now = Date.now();
 
-      // 1. Frag & Multi-Combo Reward
+      // 1. Frag & Swift Multi-Combo Chain-Kill Reward
       const currentFrags = me.fragcount || me.score || 0;
       if (currentFrags > this.lastFrags) {
         const killsGained = currentFrags - this.lastFrags;
-        if (now - this.lastFragTime < CONFIG.comboWindowMs) {
+        const elapsedSinceLast = now - this.lastFragTime;
+
+        if (elapsedSinceLast < CONFIG.comboWindowMs) {
           this.currentCombo += killsGained;
         } else {
           this.currentCombo = killsGained;
         }
         this.lastFragTime = now;
 
-        const comboMultiplier = Math.min(3.0, 1.0 + (this.currentCombo - 1) * 0.5);
-        reward += 175.0 * killsGained * comboMultiplier;
+        // Exponential Swift Combo Multipliers:
+        // 1 kill: 250, 2 kills: 650, 3 kills: 1300, 4 kills: 2200, 5+ kills: 3500+
+        let comboMultiplier = 1.0;
+        if (this.currentCombo === 1) comboMultiplier = 1.0;
+        else if (this.currentCombo === 2) comboMultiplier = 2.6;
+        else if (this.currentCombo === 3) comboMultiplier = 5.2;
+        else if (this.currentCombo === 4) comboMultiplier = 8.8;
+        else comboMultiplier = 14.0;
+
+        // Swiftness Bonus: extra reward for eliminating in < 2.0s
+        let swiftBonus = 0;
+        if (elapsedSinceLast < 2000 && this.currentCombo > 1) {
+          swiftBonus = 200.0;
+        }
+
+        const killReward = (250.0 * killsGained * comboMultiplier) + swiftBonus;
+        reward += killReward;
         this.lastFrags = currentFrags;
+
+        // Trigger Mortal Kombat style animation & sound sting
+        this.comboFX.triggerCombo(this.currentCombo, killsGained, me.x, me.y);
       }
 
       // 2. CATASTROPHIC DEATH PENALTY (-500.0)
@@ -1187,7 +1382,7 @@
       if (me.y < 15) reward -= 10.0;
       if (me.y > worldHeight - 35) reward -= 10.0;
 
-      // 5. Combat Altitude Hegemony & Zero-Death Positioning
+      // 5. Combat Altitude Hegemony & Rapid Combo Pursuit
       const dist = state[2];
       const isAbove = state[5] > 0;
       const closingSpeed = state[17];
@@ -1206,16 +1401,17 @@
           }
         }
 
-        if (dist < 0.45) {
+        // Relentless swift hunting reward for nearest enemy
+        if (dist < 0.55) {
           if (isAbove) {
-            reward += 2.5;
+            reward += 3.5;
             if (inLethalDiveCone) {
-              reward += 5.0;
+              reward += 7.0; // High incentive to execute lethal dive on target!
               if (action === ACTIONS.IDLE || action === ACTIONS.LEFT || action === ACTIONS.RIGHT) {
-                reward += 2.0;
+                reward += 3.0;
               }
             }
-            if (closingSpeed > 0) reward += 2.0 * closingSpeed;
+            if (closingSpeed > 0) reward += 3.0 * closingSpeed;
           } else {
             reward -= 5.0;
             if (action === ACTIONS.FLAP || action === ACTIONS.LEFT_FLAP || action === ACTIONS.RIGHT_FLAP) reward += 2.0;
