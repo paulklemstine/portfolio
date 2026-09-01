@@ -84,16 +84,18 @@ var playClip = function(key, volume)
 		return;
 	}
 
-	if (clips[key])
+	if (clips[key] && (clips[key] instanceof AudioBuffer))
 	{
-		var source = audioContext.createBufferSource();
-		var gain = audioContext.createGain();
-		gain.gain.value = volume * maxVolume;
-		source.buffer = clips[key];
-		source.connect(gain);
-		gain.connect(audioContext.destination);
-		
-		source.start(0);
+		try {
+			var source = audioContext.createBufferSource();
+			var gain = audioContext.createGain();
+			gain.gain.value = volume * maxVolume;
+			source.buffer = clips[key];
+			source.connect(gain);
+			gain.connect(audioContext.destination);
+			
+			source.start(0);
+		} catch(e) {}
 	}
 
 }
@@ -693,25 +695,42 @@ function registerSocketHandlers(socket)
 		initClient();
 		console.log("[client] initClient done, emitting new-player");
 		socket.emit("new-player", socket.id);
-		console.log("[client] new-player emitted");
+		console.log("[client] new-player emitted to joust.life");
 	});
 }
 
 window.addEventListener("resize", updateScale);
 updateScale();
 
-// Initialize audio (must be before game starts)
+// Initialize audio
 initAudio();
 
-// Auto-join: first player hosts, others join. Click to play.
-autoJoin();
+function startGame() {
+	console.log("[Client] Connecting to live https://joust.life game server...");
+	var startscreen = document.getElementById("startscreen");
+	if (startscreen) startscreen.style.display = "none";
 
-// Register handlers once net.js creates the socket shim and calls startGame()
-var _origStartGame = startGame;
-startGame = function() {
-	window.socket = net.socketShim;
+	// Connect directly to live joust.life game server (NO FULLSCREEN)
+	window.socket = io("https://joust.life", {
+		transports: ["websocket", "polling"]
+	});
+
 	registerSocketHandlers(window.socket);
-	_origStartGame();
+}
+
+// Start on click or key press
+var startscreen = document.getElementById("startscreen");
+if (startscreen) {
+	startscreen.addEventListener("click", function onStart() {
+		startscreen.removeEventListener("click", onStart);
+		startGame();
+	});
+	window.addEventListener("keydown", function onKey(e) {
+		if (startscreen && startscreen.style.display !== "none") {
+			startscreen.removeEventListener("click", onStart);
+			startGame();
+		}
+	}, { once: true });
 }
 
 
