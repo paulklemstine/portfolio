@@ -1486,6 +1486,7 @@
       this.hadTerrainBump = false;
       this.lastFragTime = 0;
       this.currentCombo = 0;
+      this.lastTargetDist = null;
       this.comboFX = new MortalKombatComboFX();
     }
 
@@ -1601,6 +1602,44 @@
               }
             }
           }
+        }
+
+                // 7. RELENTLESS ENEMY PROXIMITY & DISTANCE CLOSING REWARD
+        const W = (typeof world !== "undefined" && world.width) || 1168;
+        const target = (this.ctrl && this.ctrl.env) ? this.ctrl.env.lockedTarget : (enemies[0] || null);
+        if (target && !target.dead) {
+          const dx = this.ctrl && this.ctrl.env ? this.ctrl.env.shortestToroidalDx(me.x, target.x, W) : (target.x - me.x);
+          const dy = target.y - me.y;
+          const currentDist = Math.hypot(dx, dy);
+
+          // Kinetic Delta Closing Reward: reward every pixel closed toward the enemy!
+          if (this.lastTargetDist !== undefined && this.lastTargetDist !== null) {
+            const distDelta = this.lastTargetDist - currentDist; // Positive when closing distance
+            if (distDelta > 0.05) {
+              reward += distDelta * 2.8; // High reward for closing in!
+            } else if (distDelta < -0.1 && threatLevel <= 0) {
+              reward += distDelta * 0.8;
+            }
+          }
+          this.lastTargetDist = currentDist;
+
+          // Continuous Inverse-Distance Proximity Field
+          const proximityBonus = 35.0 / (1.0 + (currentDist / 40.0));
+          if (isAbove) {
+            reward += proximityBonus * 0.45;
+          } else {
+            reward += proximityBonus * 0.20;
+          }
+
+          // Direct approach velocity vector reward
+          const unitDx = dx / (currentDist + 1e-5);
+          const unitDy = dy / (currentDist + 1e-5);
+          const closingVelocity = ((me.vx || 0) * unitDx) + ((me.vy || 0) * unitDy);
+          if (closingVelocity > 0) {
+            reward += closingVelocity * 2.5;
+          }
+        } else {
+          this.lastTargetDist = null;
         }
 
         // Relentless swift hunting reward for nearest enemy
