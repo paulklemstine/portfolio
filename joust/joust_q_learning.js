@@ -742,6 +742,101 @@
       };
     }
 
+        // Global Multi-Enemy Optimal Elimination Tour Solver (Branch-and-Bound / Dynamic Trajectory)
+    computeOptimalEliminationTour(me, enemies, W, H, platforms) {
+      if (!me || !enemies || enemies.length === 0) {
+        this.optimalTour = [];
+        this.optimalTourWaypoints = [];
+        return [];
+      }
+
+      const livingEnemies = enemies.filter(e => e && !e.dead);
+      if (livingEnemies.length === 0) {
+        this.optimalTour = [];
+        this.optimalTourWaypoints = [];
+        return [];
+      }
+
+      if (livingEnemies.length === 1) {
+        const target = livingEnemies[0];
+        const intercept = this.predictor.calculateInterceptPoint(me, target, W, H);
+        this.optimalTour = [target];
+        this.optimalTourWaypoints = [
+          { x: me.x, y: me.y },
+          { x: intercept.x, y: intercept.y, target, seq: 1 }
+        ];
+        this.lockedTarget = target;
+        this.interceptPt = intercept;
+        return this.optimalTour;
+      }
+
+      // Sort candidate targets by combined distance and altitude advantage
+      const sortedCandidates = livingEnemies.slice().sort((a, b) => {
+        const da = Math.hypot(this.shortestToroidalDx(me.x, a.x, W), a.y - me.y);
+        const db = Math.hypot(this.shortestToroidalDx(me.x, b.x, W), b.y - me.y);
+        return da - db;
+      }).slice(0, 5);
+
+      const costBetween = (ax, ay, bx, by) => {
+        const dx = Math.abs(this.shortestToroidalDx(ax, bx, W));
+        const dy = by - ay; // Positive if B is below A (dive advantage)
+        let flightTime = dx / 2.5;
+        if (dy > 0) {
+          flightTime += Math.sqrt(dy / 0.15) * 0.35; // Gravity assist
+        } else {
+          flightTime += Math.abs(dy) * 0.85 + 20; // Climbing penalty
+        }
+        return flightTime;
+      };
+
+      const n = sortedCandidates.length;
+      let bestTour = [];
+      let minCost = Infinity;
+      const visited = new Array(n).fill(false);
+      const currentTour = [];
+
+      const searchTour = (lastX, lastY, currentCost, depth) => {
+        if (currentCost >= minCost) return;
+        if (depth === n || depth >= 3) {
+          if (currentCost < minCost) {
+            minCost = currentCost;
+            bestTour = currentTour.slice();
+          }
+          return;
+        }
+
+        for (let i = 0; i < n; i++) {
+          if (!visited[i]) {
+            visited[i] = true;
+            currentTour.push(sortedCandidates[i]);
+            const nextCost = currentCost + costBetween(lastX, lastY, sortedCandidates[i].x, sortedCandidates[i].y);
+            searchTour(sortedCandidates[i].x, sortedCandidates[i].y, nextCost, depth + 1);
+            currentTour.pop();
+            visited[i] = false;
+          }
+        }
+      };
+
+      searchTour(me.x, me.y, 0, 0);
+
+      this.optimalTour = bestTour;
+      const waypoints = [{ x: me.x, y: me.y }];
+      for (let i = 0; i < bestTour.length; i++) {
+        const t = bestTour[i];
+        const prevPt = i === 0 ? me : bestTour[i - 1];
+        const intPt = this.predictor.calculateInterceptPoint(prevPt, t, W, H);
+        waypoints.push({ x: intPt.x, y: intPt.y, target: t, seq: i + 1 });
+      }
+      this.optimalTourWaypoints = waypoints;
+
+      if (bestTour.length > 0) {
+        this.lockedTarget = bestTour[0];
+        this.interceptPt = waypoints[1] || null;
+        this.swoopChainTarget = bestTour[1] || null;
+      }
+
+      return bestTour;
+    }
     pickApexTarget(me, enemies, W, H) {
       if (!enemies || enemies.length === 0) {
         this.lockedTarget = null;
@@ -832,6 +927,7 @@
       const maxSpd = (world.joustguys && world.joustguys.xSpeed) || 2.5;
 
       const enemies = this.getEnemies();
+      this.computeOptimalEliminationTour(me, enemies, W, H, world.platform || []);
       const { target, threat, second } = this.pickApexTarget(me, enemies, W, H);
 
       if (target) {
@@ -1401,6 +1497,33 @@
           }
         }
 
+        // 6. Optimal Elimination Path Following & Vector Alignment Reward
+        if (this.ctrl && this.ctrl.env && this.ctrl.env.optimalTourWaypoints && this.ctrl.env.optimalTourWaypoints.length > 1) {
+          const wp = this.ctrl.env.optimalTourWaypoints[1];
+          if (wp) {
+            const W = (typeof world !== "undefined" && world.width) || 1168;
+            const dxToWp = this.ctrl.env.shortestToroidalDx(me.x, wp.x, W);
+            const dyToWp = wp.y - me.y;
+            const distToWp = Math.hypot(dxToWp, dyToWp);
+
+            if (distToWp > 4) {
+              const ux = dxToWp / distToWp;
+              const uy = dyToWp / distToWp;
+              const vAlongPath = ((me.vx || 0) * ux) + ((me.vy || 0) * uy);
+
+              if (vAlongPath > 0) {
+                reward += vAlongPath * 2.2;
+              } else {
+                reward -= 0.3;
+              }
+
+              if (distToWp < 75) {
+                reward += (75 - distToWp) * 0.05;
+              }
+            }
+          }
+        }
+
         // Relentless swift hunting reward for nearest enemy
         if (dist < 0.55) {
           if (isAbove) {
@@ -1846,6 +1969,47 @@
         ctx.fill();
       }
 
+      // Render Global Optimal Elimination Tour Constellation
+      const tourWps = this.ctrl.env.optimalTourWaypoints;
+      if (tourWps && tourWps.length > 1) {
+        ctx.beginPath();
+        ctx.strokeStyle = "rgba(255, 215, 0, 0.75)";
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([5, 3]);
+
+        for (let i = 0; i < tourWps.length; i++) {
+          const wp = tourWps[i];
+          const wx = (wp.x + 8) * scale;
+          const wy = (wp.y + 10) * scale;
+          if (i === 0) ctx.moveTo(meCenterX, meCenterY);
+          else ctx.lineTo(wx, wy);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Render target sequence badges along the optimal tour
+        for (let i = 1; i < tourWps.length; i++) {
+          const wp = tourWps[i];
+          const wx = (wp.x + 8) * scale;
+          const wy = (wp.y + 10) * scale;
+
+          ctx.beginPath();
+          ctx.arc(wx, wy, 6 * scale * 0.5, 0, 2 * Math.PI);
+          ctx.fillStyle = i === 1 ? "#ff0055" : (i === 2 ? "#00ffcc" : "#ffeb3b");
+          ctx.fill();
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          const label = i === 1 ? "1: STRIKE" : (i === 2 ? "2: CHAIN" : "3: COMBO");
+          const bSize = Math.max(9, Math.round(3 * scale));
+          ctx.font = `bold ${bSize}px monospace`;
+          ctx.fillStyle = "#ffffff";
+          ctx.textAlign = "center";
+          ctx.fillText(label, wx, wy - 8 * scale * 0.5);
+        }
+      }
+
       const target = this.ctrl.env.lockedTarget;
       if (target) {
         const isAdvantage = me.y < target.y - 5;
@@ -1914,6 +2078,7 @@
       this.env = new JoustEnv();
       this.actions = new GracefulActionExecutor();
       this.rewardEngine = new RewardEngine();
+      this.rewardEngine.ctrl = this;
 
       this.qNet = new QNetwork(CONFIG.stateDim, CONFIG.actionDim, 64);
       this.targetNet = new QNetwork(CONFIG.stateDim, CONFIG.actionDim, 64);
