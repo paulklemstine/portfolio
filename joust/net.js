@@ -138,7 +138,60 @@ function hostInitWorld(playerCount) {
   world.generate();
 }
 
+var MIN_TOTAL_PLAYERS = 6;
+
+function hostEnsureBots() {
+  var humanCount = 0;
+  for (var id in hostPlayers) {
+    if (!hostPlayers[id].isBot) humanCount++;
+  }
+  var desiredBots = Math.max(0, MIN_TOTAL_PLAYERS - humanCount);
+
+  // Clean excess bots if humans joined
+  var currentBots = [];
+  for (var id in hostPlayers) {
+    if (hostPlayers[id].isBot) currentBots.push(id);
+  }
+  while (currentBots.length > desiredBots) {
+    var removeId = currentBots.pop();
+    var p = hostPlayers[removeId];
+    if (p) {
+      var idx = hostWorldPlayers.indexOf(p.joustGuy);
+      if (idx > -1) hostWorldPlayers.splice(idx, 1);
+      delete hostPlayers[removeId];
+    }
+  }
+
+  // Spawn needed bots
+  while (currentBots.length < desiredBots) {
+    var botId = "bot_" + Math.random().toString(36).substr(2, 6);
+    var teamIndex = Object.keys(hostPlayers).length % world.teams.length;
+    var team = world.teams[teamIndex].id;
+    var name = generateName();
+
+    var jg = new JoustGuy(null, botId, 0, 0);
+    jg.team = team;
+    jg.render = function() {};
+    jg.updateTeam = function() {};
+    jg.remove = function() {};
+    jg.isBot = true;
+
+    hostPlayers[botId] = {
+      joustGuy: jg,
+      name: name,
+      team: team,
+      isBot: true,
+      flapCadence: 130 + Math.random() * 100,
+      lastFlap: 0,
+      nextDirChange: 0,
+      currentDir: Math.random() < 0.5 ? -1 : 1
+    };
+    currentBots.push(botId);
+  }
+}
+
 function hostStartRound() {
+  hostEnsureBots();
   var count = Object.keys(hostPlayers).length;
   hostInitWorld(Math.max(count, 5));
 
@@ -171,7 +224,7 @@ function hostStartRound() {
   if (hostRoundTimer) clearTimeout(hostRoundTimer);
   hostRoundTimer = setTimeout(hostEndRound, hostGameState.roundDurationMs);
 
-  console.log("[Host] Round started: " + count + " players");
+  console.log("[Host] Round started: " + count + " players (with AI opponents)");
 }
 
 function hostEndRound() {
@@ -183,6 +236,44 @@ function hostEndRound() {
 
 function hostGameLoop() {
   if (!hostGameState.running) return;
+
+  var now = Date.now();
+  // Update AI bot decisions
+  for (var id in hostPlayers) {
+    var p = hostPlayers[id];
+    if (p.isBot && p.joustGuy && !p.joustGuy.dead) {
+      var bot = p.joustGuy;
+
+      // 1. Directional movement
+      if (now > p.nextDirChange) {
+        p.nextDirChange = now + 1200 + Math.random() * 2000;
+        p.currentDir = Math.random() < 0.5 ? -1 : 1;
+        if (p.currentDir === -1) {
+          bot.handleKeyDown(37);
+          bot.handleKeyUp(39);
+        } else {
+          bot.handleKeyDown(39);
+          bot.handleKeyUp(37);
+        }
+      }
+
+      // 2. Flapping behavior: keep bots dynamic in mid-air
+      var shouldFlap = false;
+      if (bot.y > (world.height - 75)) {
+        shouldFlap = true;
+      } else if (bot.vy > 0.6 && Math.random() < 0.45) {
+        shouldFlap = true;
+      } else if (bot.y > 120 && Math.random() < 0.08) {
+        shouldFlap = true;
+      }
+
+      if (shouldFlap && (now - p.lastFlap > p.flapCadence)) {
+        p.lastFlap = now;
+        bot.handleKeyDown(38);
+        bot.handleKeyUp(38);
+      }
+    }
+  }
 
   // Swap world.players to server array during tick
   // (game_common.js methods like check/findSpawnPoint reference world.players)
