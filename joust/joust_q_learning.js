@@ -1272,6 +1272,10 @@
       const enemies = env ? env.getEnemies() : [];
       const target = env ? env.lockedTarget : null;
       const threat = env ? env.threatEnemy : null;
+      if (this.ctrl && this.ctrl.superhumanCore) {
+        const shBias = this.ctrl.superhumanCore.getSuperhumanTacticalBias(me, target, enemies, W, H, platforms);
+        if (shBias.tacticalAction !== null) return shBias.tacticalAction;
+      }
 
       // 1. REFLEXIVE EMERGENCY DEFENSE: evade overhead threat
       if (threat && !threat.dead) {
@@ -2384,6 +2388,256 @@
     }
   }
 
+    // ==========================================================================
+  // 1. OPPONENT BEHAVIORAL PROFILER & FINGERPRINTING
+  // ==========================================================================
+  class OpponentProfiler {
+    constructor() {
+      this.profiles = new Map();
+    }
+
+    update(enemies) {
+      if (!enemies) return;
+      const now = Date.now();
+
+      for (let i = 0; i < enemies.length; i++) {
+        const en = enemies[i];
+        if (!en || !en.id) continue;
+
+        let prof = this.profiles.get(en.id);
+        if (!prof) {
+          prof = {
+            id: en.id,
+            history: [],
+            flapRate: 0.2,
+            avgAltitude: en.y,
+            avgVy: 0,
+            groundedRatio: 0,
+            style: "BALANCED"
+          };
+          this.profiles.set(en.id, prof);
+        }
+
+        prof.history.push({ y: en.y, vy: en.vy || 0, grounded: !!en.grounded, time: now });
+        if (prof.history.length > 50) prof.history.shift();
+
+        let flaps = 0;
+        let sumY = 0;
+        let sumVy = 0;
+        let groundeds = 0;
+
+        for (let h = 1; h < prof.history.length; h++) {
+          const prev = prof.history[h - 1];
+          const curr = prof.history[h];
+          if (curr.vy < prev.vy - 1.5) flaps++;
+          sumY += curr.y;
+          sumVy += curr.vy;
+          if (curr.grounded) groundeds++;
+        }
+
+        const count = prof.history.length;
+        prof.flapRate = flaps / count;
+        prof.avgAltitude = sumY / count;
+        prof.avgVy = sumVy / count;
+        prof.groundedRatio = groundeds / count;
+
+        if (prof.flapRate > 0.28) {
+          prof.style = "FLAPPER_PANIC";
+        } else if (prof.groundedRatio > 0.45) {
+          prof.style = "PLATFORM_CAMPER";
+        } else if (prof.avgAltitude < 120) {
+          prof.style = "AGGRESSIVE_DIVER";
+        } else {
+          prof.style = "PASSIVE_GLIDER";
+        }
+      }
+    }
+
+    getProfile(id) {
+      return this.profiles.get(id) || { style: "BALANCED" };
+    }
+  }
+
+  // ==========================================================================
+  // 2. KINETIC ENERGY & HAMILTONIAN ORBITAL GOVERNOR
+  // ==========================================================================
+  class KineticEnergyGovernor {
+    constructor() {
+      this.g = 0.15;
+    }
+
+    computeMechanicalEnergy(me, worldHeight) {
+      if (!me) return 0;
+      const kinetic = 0.5 * ((me.vx || 0) * (me.vx || 0) + (me.vy || 0) * (me.vy || 0));
+      const potential = this.g * Math.max(0, worldHeight - me.y);
+      return kinetic + potential;
+    }
+
+    getOptimalPlungeEnergy(me, targetY) {
+      if (!me || me.y >= targetY) return 0;
+      const fallDistance = targetY - me.y;
+      return Math.sqrt(2 * this.g * fallDistance);
+    }
+  }
+
+  // ==========================================================================
+  // 3. CHOKE-POINT AERIAL DOMINANCE & ZONE CONTROLLER
+  // ==========================================================================
+  class ChokePointZoneController {
+    constructor() {
+      this.zones = [
+        { name: "APEX_CENTER", x: 584, y: 55, radius: 120, priority: 1.0 },
+        { name: "LEFT_WRAP_AMBUSH", x: 70, y: 65, radius: 90, priority: 0.85 },
+        { name: "RIGHT_WRAP_AMBUSH", x: 1098, y: 65, radius: 90, priority: 0.85 },
+        { name: "CENTER_FUNNEL", x: 584, y: 160, radius: 80, priority: 0.75 }
+      ];
+    }
+
+    getBestPatrolZone(me, enemies, W) {
+      if (!enemies || enemies.length === 0) return this.zones[0];
+
+      let bestZone = this.zones[0];
+      let maxDensityScore = -Infinity;
+
+      for (let z = 0; z < this.zones.length; z++) {
+        const zone = this.zones[z];
+        let density = 0;
+
+        for (let e = 0; e < enemies.length; e++) {
+          const en = enemies[e];
+          if (!en || en.dead) continue;
+          let dx = Math.abs(en.x - zone.x);
+          if (dx > W / 2) dx = W - dx;
+          if (dx < zone.radius && en.y > zone.y) {
+            density += (zone.radius - dx) * (en.y - zone.y);
+          }
+        }
+
+        const score = density * zone.priority;
+        if (score > maxDensityScore) {
+          maxDensityScore = score;
+          bestZone = zone;
+        }
+      }
+
+      return bestZone;
+    }
+  }
+
+  // ==========================================================================
+  // 4. SPAWN VORTEX TRAPPING & RESURRECTION PREDICTOR
+  // ==========================================================================
+  class SpawnVortexPredictor {
+    constructor() {
+      this.deadPlayers = new Map();
+      this.spawnPlatforms = [
+        { x: 230, y: 380 },
+        { x: 938, y: 380 },
+        { x: 584, y: 220 }
+      ];
+    }
+
+    trackDeaths(enemies) {
+      const now = Date.now();
+      if (!enemies) return;
+
+      for (let i = 0; i < enemies.length; i++) {
+        const en = enemies[i];
+        if (!en || !en.id) continue;
+
+        if (en.dead) {
+          if (!this.deadPlayers.has(en.id)) {
+            const sp = this.spawnPlatforms[Math.floor(Math.random() * this.spawnPlatforms.length)];
+            this.deadPlayers.set(en.id, {
+              deathTime: now,
+              spawnPlatform: sp,
+              estRespawnTime: now + 2500
+            });
+          }
+        } else {
+          this.deadPlayers.delete(en.id);
+        }
+      }
+    }
+
+    getImminentRespawn(now) {
+      for (const [id, data] of this.deadPlayers.entries()) {
+        const timeUntilSpawn = data.estRespawnTime - now;
+        if (timeUntilSpawn > 0 && timeUntilSpawn < 1200) {
+          return { id, platform: data.spawnPlatform, timeUntilSpawn };
+        }
+      }
+      return null;
+    }
+  }
+
+  // ==========================================================================
+  // 5. SUPERHUMAN INTELLIGENCE MASTER CONTROLLER
+  // ==========================================================================
+  class SuperhumanIntelligenceCore {
+    constructor(controller) {
+      this.ctrl = controller;
+      this.profiler = new OpponentProfiler();
+      this.energyGov = new KineticEnergyGovernor();
+      this.zoneCtrl = new ChokePointZoneController();
+      this.spawnPredictor = new SpawnVortexPredictor();
+    }
+
+    update(me, enemies, W, H, platforms) {
+      this.profiler.update(enemies);
+      this.spawnPredictor.trackDeaths(enemies);
+    }
+
+    getSuperhumanTacticalBias(me, target, enemies, W, H, platforms) {
+      if (!me || me.dead) return { tacticalAction: null, strategyName: "APEX_HEGEMONY" };
+
+      const now = Date.now();
+
+      // 1. Check Imminent Spawn Trapping
+      const imminentSpawn = this.spawnPredictor.getImminentRespawn(now);
+      if (imminentSpawn && me.y < 80) {
+        const spDx = this.ctrl.env.shortestToroidalDx(me.x, imminentSpawn.platform.x, W);
+        if (Math.abs(spDx) > 15) {
+          return {
+            tacticalAction: spDx > 0 ? ACTIONS.RIGHT : ACTIONS.LEFT,
+            strategyName: "SPAWN_VORTEX_CAMP"
+          };
+        }
+      }
+
+      // 2. Behavioral Profiler Tactical Counter
+      if (target && !target.dead) {
+        const prof = this.profiler.getProfile(target.id);
+        const dx = this.ctrl.env.shortestToroidalDx(me.x, target.x, W);
+        const dy = target.y - me.y;
+
+        if (prof.style === "FLAPPER_PANIC") {
+          if (target.vy < -0.8 && dy > 0 && dy < 35) {
+            return { tacticalAction: ACTIONS.FLAP, strategyName: "BAIT_FLAP_EXHAUSTION" };
+          }
+        } else if (prof.style === "PLATFORM_CAMPER") {
+          if (dy > 20 && Math.abs(dx) < 40) {
+            return { tacticalAction: dx > 0 ? ACTIONS.RIGHT : ACTIONS.LEFT, strategyName: "LEDGE_SWEEP" };
+          }
+        }
+      }
+
+      // 3. Choke-Point Patrol Zone Control
+      if (!target || target.dead) {
+        const bestZone = this.zoneCtrl.getBestPatrolZone(me, enemies, W);
+        const zDx = this.ctrl.env.shortestToroidalDx(me.x, bestZone.x, W);
+        if (Math.abs(zDx) > 20) {
+          return {
+            tacticalAction: zDx > 0 ? ACTIONS.RIGHT_FLAP : ACTIONS.LEFT_FLAP,
+            strategyName: "CHOKEPOINT_PATROL"
+          };
+        }
+      }
+
+      return { tacticalAction: null, strategyName: "APEX_HEGEMONY" };
+    }
+  }
+
   // ==========================================================================
   // MASTER ZERO-DEATH CONTROLLER CLASS
   // ==========================================================================
@@ -2391,8 +2645,10 @@
     constructor() {
       this.env = new JoustEnv();
       this.actions = new GracefulActionExecutor();
+      this.actions.ctrl = this;
       this.rewardEngine = new RewardEngine();
       this.rewardEngine.ctrl = this;
+      this.superhumanCore = new SuperhumanIntelligenceCore(this);
 
       this.qNet = new QNetwork(CONFIG.stateDim, CONFIG.actionDim, 64);
       this.targetNet = new QNetwork(CONFIG.stateDim, CONFIG.actionDim, 64);
@@ -2473,10 +2729,10 @@
         this.wasDeadLastStep = false;
       }
 
+      const enemies = this.env.getEnemies();
+      this.superhumanCore.update(me, enemies, (typeof world !== "undefined" && world.width) || 1168, (typeof world !== "undefined" && world.height) || 600, (typeof world !== "undefined" && world.platform) || []);
       const validState = this.env.extractState(this.currentState, this.lastAction);
       if (!validState) return;
-
-      const enemies = this.env.getEnemies();
       const worldHeight = (typeof world !== 'undefined' && world.height) || 600;
 
       if (this.hasValidLastState && this.isLearning) {
