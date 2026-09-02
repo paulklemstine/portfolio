@@ -690,19 +690,22 @@
   }
 
   class QNetwork {
-    constructor(stateDim, actionDim, h1Size = 192, h2Size = 96) {
+    constructor(stateDim, actionDim, h1Size = 192, h2Size = 96, predDim = 72) {
       this.stateDim = stateDim;
       this.actionDim = actionDim;
       this.h1Size = h1Size;
       this.h2Size = h2Size;
+      this.predDim = predDim; // 4 hero future coords (t+6, t+12) + 68 coords for 17 opponents (t+6, t+12)
 
       this.l1 = new DenseLayer(stateDim, h1Size);
       this.l2 = new DenseLayer(h1Size, h2Size);
-      this.l3 = new DenseLayer(h2Size, actionDim);
+      this.l3 = new DenseLayer(h2Size, actionDim); // Policy Q-Values Head
+      this.l3_pred = new DenseLayer(h2Size, predDim); // Future Kinematics World-Model Head
 
       this.h1 = new Float32Array(h1Size);
       this.h2 = new Float32Array(h2Size);
       this.out = new Float32Array(actionDim);
+      this.predOut = new Float32Array(predDim);
 
       this.stepCount = 0;
     }
@@ -712,18 +715,26 @@
       this.l1.forward(state, this.h1, false);
       this.l2.forward(this.h1, this.h2, false);
       this.l3.forward(this.h2, res, true);
+      this.l3_pred.forward(this.h2, this.predOut, true);
       return res;
     }
 
-    backward(state, action, tdError) {
+    predictFuture(state) {
+      this.predict(state);
+      return this.predOut;
+    }
+
+    backward(state, action, tdError, targetFuture = null) {
       this.l1.forward(state, this.h1, false);
       this.l2.forward(this.h1, this.h2, false);
       this.l3.forward(this.h2, this.out, true);
+      this.l3_pred.forward(this.h2, this.predOut, true);
 
+      // 1. Q-Value Policy Gradient
       const dOut = new Float32Array(this.actionDim);
       dOut[action] = -Math.max(-5.0, Math.min(5.0, tdError));
 
-      const dh2 = new Float32Array(this.h2Size);
+      const dh2_q = new Float32Array(this.h2Size);
       for (let j = 0; j < this.actionDim; j++) {
         const delta = dOut[j];
         if (delta === 0) continue;
@@ -731,12 +742,30 @@
         const offset = j * this.h2Size;
         for (let i = 0; i < this.h2Size; i++) {
           this.l3.gradW[offset + i] += delta * this.h2[i];
-          dh2[i] += delta * this.l3.weights[offset + i];
+          dh2_q[i] += delta * this.l3.weights[offset + i];
         }
       }
 
+      // 2. Future Position Prediction Gradient (World Model Supervised Backprop)
+      const dh2_pred = new Float32Array(this.h2Size);
+      if (targetFuture) {
+        for (let k = 0; k < this.predDim; k++) {
+          const predErr = this.predOut[k] - targetFuture[k];
+          const grad = Math.max(-2.0, Math.min(2.0, predErr));
+          this.l3_pred.gradB[k] += grad;
+          const offset = k * this.h2Size;
+          for (let i = 0; i < this.h2Size; i++) {
+            this.l3_pred.gradW[offset + i] += grad * this.h2[i];
+            dh2_pred[i] += grad * this.l3_pred.weights[offset + i];
+          }
+        }
+      }
+
+      // 3. Combined Multi-Task Latent Error Backpropagation
+      const dh2 = new Float32Array(this.h2Size);
       for (let i = 0; i < this.h2Size; i++) {
-        if (this.h2[i] <= 0) dh2[i] *= 0.05;
+        let totalDH2 = dh2_q[i] + 0.35 * dh2_pred[i];
+        dh2[i] = this.h2[i] > 0 ? totalDH2 : 0.05 * totalDH2;
       }
 
       const dh1 = new Float32Array(this.h1Size);
@@ -772,18 +801,21 @@
       this.l1.applyAdam(lr, beta1, beta2, eps, this.stepCount);
       this.l2.applyAdam(lr, beta1, beta2, eps, this.stepCount);
       this.l3.applyAdam(lr, beta1, beta2, eps, this.stepCount);
+      this.l3_pred.applyAdam(lr, beta1, beta2, eps, this.stepCount);
     }
 
     copyFrom(other) {
       this.l1.copyFrom(other.l1);
       this.l2.copyFrom(other.l2);
       this.l3.copyFrom(other.l3);
+      if (other.l3_pred) this.l3_pred.copyFrom(other.l3_pred);
     }
 
     polyakUpdateFrom(other, tau) {
       this.l1.polyakUpdateFrom(other.l1, tau);
       this.l2.polyakUpdateFrom(other.l2, tau);
       this.l3.polyakUpdateFrom(other.l3, tau);
+      if (other.l3_pred) this.l3_pred.polyakUpdateFrom(other.l3_pred, tau);
     }
 
     toJSON() {
@@ -792,9 +824,11 @@
         actionDim: this.actionDim,
         h1Size: this.h1Size,
         h2Size: this.h2Size,
+        predDim: this.predDim,
         l1: { w: Array.from(this.l1.weights), b: Array.from(this.l1.biases) },
         l2: { w: Array.from(this.l2.weights), b: Array.from(this.l2.biases) },
         l3: { w: Array.from(this.l3.weights), b: Array.from(this.l3.biases) },
+        l3_pred: { w: Array.from(this.l3_pred.weights), b: Array.from(this.l3_pred.biases) },
       };
     }
 
@@ -806,6 +840,8 @@
       const l2B = data.l2 ? (data.l2.biases || data.l2.b) : null;
       const l3W = data.l3 ? (data.l3.weights || data.l3.w) : null;
       const l3B = data.l3 ? (data.l3.biases || data.l3.b) : null;
+      const l3PredW = data.l3_pred ? (data.l3_pred.weights || data.l3_pred.w) : null;
+      const l3PredB = data.l3_pred ? (data.l3_pred.biases || data.l3_pred.b) : null;
 
       if (l1W && l1B && l2W && l2B && l3W && l3B) {
         if (l1W.length === this.l1.weights.length && l2W.length === this.l2.weights.length && l3W.length === this.l3.weights.length) {
@@ -815,6 +851,10 @@
           this.l2.biases.set(l2B);
           this.l3.weights.set(l3W);
           this.l3.biases.set(l3B);
+          if (l3PredW && l3PredB && l3PredW.length === this.l3_pred.weights.length) {
+            this.l3_pred.weights.set(l3PredW);
+            this.l3_pred.biases.set(l3PredB);
+          }
           return true;
         }
       }
@@ -823,14 +863,16 @@
   }
 
   // ==========================================================================
-  // EXPERIENCE REPLAY BUFFER
+  // EXPERIENCE REPLAY BUFFER (WITH WORLD MODEL FUTURE TRAJECTORY TARGETS)
   // ==========================================================================
   class ReplayBuffer {
-    constructor(capacity, stateDim) {
+    constructor(capacity, stateDim, predDim = 72) {
       this.capacity = capacity;
       this.stateDim = stateDim;
+      this.predDim = predDim;
       this.states = new Float32Array(capacity * stateDim);
       this.nextStates = new Float32Array(capacity * stateDim);
+      this.futureTargets = new Float32Array(capacity * predDim);
       this.actions = new Uint8Array(capacity);
       this.rewards = new Float32Array(capacity);
       this.dones = new Uint8Array(capacity);
@@ -839,18 +881,27 @@
       this.size = 0;
     }
 
-    push(state, action, reward, nextState, done) {
+    push(state, action, reward, nextState, futureTarget, done) {
       const idx = this.pointer;
       const sOffset = idx * this.stateDim;
+      const fOffset = idx * this.predDim;
 
       this.states.set(state, sOffset);
       this.nextStates.set(nextState, sOffset);
+      if (futureTarget) {
+        this.futureTargets.set(futureTarget, fOffset);
+      }
       this.actions[idx] = action;
       this.rewards[idx] = reward;
       this.dones[idx] = done ? 1 : 0;
 
       this.pointer = (this.pointer + 1) % this.capacity;
       if (this.size < this.capacity) this.size++;
+    }
+
+    getFutureTarget(idx, out) {
+      const fOffset = idx * this.predDim;
+      out.set(this.futureTargets.subarray(fOffset, fOffset + this.predDim));
     }
 
     sample(batchSize) {
@@ -2762,7 +2813,8 @@
         this.episodeReward += reward;
 
         const done = me.dead;
-        this.replay.push(this.nextState, this.lastAction, reward, this.currentState, done);
+        const futureTarget = this.extractFutureGroundTruth(me, (typeof world !== 'undefined' && world.players) ? world.players : [], (typeof world !== 'undefined' && world.width) || 1168, worldHeight, (typeof world !== 'undefined' && world.platform) ? world.platform : []);
+        this.replay.push(this.nextState, this.lastAction, reward, this.currentState, futureTarget, done);
 
         if (this.totalSteps % CONFIG.trainFrequencyTicks === 0 && this.replay.size >= CONFIG.minReplayBeforeTrain) {
           this.trainBatch();
@@ -2861,12 +2913,45 @@
       }
     }
 
+    extractFutureGroundTruth(me, worldPlayers, W, H, platforms) {
+      const out = new Float32Array(72);
+      if (!me) return out;
+      const myF6 = this.predictKinematics(me.x, me.y, me.vx || 0, me.vy || 0, 6, W, H, platforms);
+      const myF12 = this.predictKinematics(me.x, me.y, me.vx || 0, me.vy || 0, 12, W, H, platforms);
+      out[0] = (myF6.x / (W - 16)) * 2 - 1;
+      out[1] = (myF6.y / H) * 2 - 1;
+      out[2] = (myF12.x / (W - 16)) * 2 - 1;
+      out[3] = (myF12.y / H) * 2 - 1;
+
+      let oppIdx = 0;
+      for (let i = 0; i < worldPlayers.length && oppIdx < 17; i++) {
+        const p = worldPlayers[i];
+        if (!p || p.id === world.myId || p.team === me.team) continue;
+        const oppF6 = this.predictKinematics(p.x, p.y, p.vx || 0, p.vy || 0, 6, W, H, platforms);
+        const oppF12 = this.predictKinematics(p.x, p.y, p.vx || 0, p.vy || 0, 12, W, H, platforms);
+
+        let dx6 = this.shortestToroidalDx(myF6.x, oppF6.x, W);
+        let dy6 = oppF6.y - myF6.y;
+        let dx12 = this.shortestToroidalDx(myF12.x, oppF12.x, W);
+        let dy12 = oppF12.y - myF12.y;
+
+        const base = 4 + oppIdx * 4;
+        out[base + 0] = dx6 / (W / 2);
+        out[base + 1] = dy6 / H;
+        out[base + 2] = dx12 / (W / 2);
+        out[base + 3] = dy12 / H;
+        oppIdx++;
+      }
+      return out;
+    }
+
     trainBatch() {
       const batchSize = CONFIG.trainBatchSize;
       const indices = this.replay.sample(batchSize);
 
       const s = new Float32Array(CONFIG.stateDim);
       const nextS = new Float32Array(CONFIG.stateDim);
+      const targetFuture = new Float32Array(72);
       const nextQOnline = new Float32Array(CONFIG.actionDim);
       const nextQTarget = new Float32Array(CONFIG.actionDim);
 
@@ -2876,6 +2961,7 @@
         const idx = indices[i];
         this.replay.getState(idx, s);
         this.replay.getNextState(idx, nextS);
+        this.replay.getFutureTarget(idx, targetFuture);
         const action = this.replay.actions[idx];
         const reward = this.replay.rewards[idx];
         const done = this.replay.dones[idx];
@@ -2901,7 +2987,7 @@
         const tdError = targetY - currentQ;
         totalBatchLoss += tdError * tdError;
 
-        this.qNet.backward(s, action, tdError);
+        this.qNet.backward(s, action, tdError, targetFuture);
       }
 
       this.qNet.stepOptimizer(CONFIG.learningRate);
