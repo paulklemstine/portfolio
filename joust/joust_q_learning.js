@@ -1882,10 +1882,12 @@
       if (me.y > worldHeight - 35) reward -= 10.0;
 
       // 5. Combat Altitude Hegemony & Bloodlust Predator Reward
-      const topTargetAdvantage = state[21]; // +1 kill advantage, -1 threat
-      const closingSpeed = state[22];
-      const inLethalDiveCone = state[28] > 0;
-      const inThreatDangerCone = state[29] > 0;
+      const topTargetAdvantage = state ? state[21] : 0; // +1 kill advantage, -1 threat
+      const isAbove = topTargetAdvantage > 0;
+      const closingSpeed = state ? state[22] : 0;
+      const dist = state ? state[20] : 1.0;
+      const inLethalDiveCone = state ? (state[28] > 0) : false;
+      const inThreatDangerCone = state ? (state[29] > 0) : false;
 
       if (enemies.length > 0) {
         if (topTargetAdvantage > 0.2) {
@@ -1928,7 +1930,7 @@
           }
         }
 
-                // 7. RELENTLESS ENEMY PROXIMITY & DISTANCE CLOSING REWARD
+        // 7. RELENTLESS ENEMY PROXIMITY & DISTANCE CLOSING REWARD
         const W = (typeof world !== "undefined" && world.width) || 1168;
         const target = (this.ctrl && this.ctrl.env) ? this.ctrl.env.lockedTarget : (enemies[0] || null);
         if (target && !target.dead) {
@@ -1941,7 +1943,7 @@
             const distDelta = this.lastTargetDist - currentDist; // Positive when closing distance
             if (distDelta > 0.05) {
               reward += distDelta * 2.8; // High reward for closing in!
-            } else if (distDelta < -0.1 && threatLevel <= 0) {
+            } else if (distDelta < -0.1 && !inThreatDangerCone) {
               reward += distDelta * 0.8;
             }
           }
@@ -1966,7 +1968,7 @@
           this.lastTargetDist = null;
         }
 
-                // 8. "RIGHT PLACE AT THE RIGHT TIME" - SPATIOTEMPORAL INTERCEPT REWARD
+        // 8. "RIGHT PLACE AT THE RIGHT TIME" - SPATIOTEMPORAL INTERCEPT REWARD
         if (this.ctrl && this.ctrl.env && this.ctrl.env.predictor && target && !target.dead) {
           const spatiotemporal = this.ctrl.env.predictor.findBestFutureInterceptSpatiotemporal(
             me,
