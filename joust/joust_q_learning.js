@@ -2438,7 +2438,8 @@
 
       if (traj.length > 1) {
         ctx.beginPath();
-        ctx.strokeStyle = isEmergency ? '#ff1744' : (inLethalDive ? '#ffeb3b' : 'rgba(0, 255, 204, 0.9)');
+        const strokeColor = isEmergency ? '#ff1744' : (inLethalDive ? '#ffeb3b' : 'rgba(0, 255, 204, 0.9)');
+        ctx.strokeStyle = strokeColor;
         ctx.lineWidth = inLethalDive ? 3.5 : 2.5;
         for (let i = 0; i < traj.length; i++) {
           const px = (traj[i].x + 8) * scale;
@@ -2448,17 +2449,34 @@
         }
         ctx.stroke();
 
-        // Tick marks along predicted future trajectory
-        for (let i = 1; i < traj.length; i++) {
-          const px = (traj[i].x + 8) * scale;
-          const py = (traj[i].y + 10) * scale;
+        // Arrowhead at the end of the trajectory line
+        const lastIdx = traj.length - 1;
+        const prevIdx = Math.max(0, lastIdx - 1);
+        const p1x = (traj[prevIdx].x + 8) * scale;
+        const p1y = (traj[prevIdx].y + 10) * scale;
+        const p2x = (traj[lastIdx].x + 8) * scale;
+        const p2y = (traj[lastIdx].y + 10) * scale;
 
-          ctx.beginPath();
-          const dotRadius = (i === traj.length - 1) ? 4.5 * scale * 0.5 : (i % 2 === 0 ? 2.5 * scale * 0.5 : 1.5 * scale * 0.5);
-          ctx.arc(px, py, dotRadius, 0, 2 * Math.PI);
-          ctx.fillStyle = (i === traj.length - 1) ? (isEmergency ? '#ff1744' : '#ffeb3b') : 'rgba(0, 255, 204, 0.9)';
-          ctx.fill();
-        }
+        const angle = Math.atan2(p2y - p1y, p2x - p1x);
+        const headLength = 9.0 * scale * 0.5;
+
+        ctx.beginPath();
+        ctx.fillStyle = isEmergency ? '#ff1744' : (inLethalDive ? '#ffeb3b' : '#00ffcc');
+        ctx.moveTo(p2x, p2y);
+        ctx.lineTo(
+          p2x - headLength * Math.cos(angle - Math.PI / 6),
+          p2y - headLength * Math.sin(angle - Math.PI / 6)
+        );
+        ctx.lineTo(
+          p2x - (headLength * 0.6) * Math.cos(angle),
+          p2y - (headLength * 0.6) * Math.sin(angle)
+        );
+        ctx.lineTo(
+          p2x - headLength * Math.cos(angle + Math.PI / 6),
+          p2y - headLength * Math.sin(angle + Math.PI / 6)
+        );
+        ctx.closePath();
+        ctx.fill();
       }
 
       // 3. Predator Target Beam & Target Reticle
