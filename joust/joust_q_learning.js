@@ -1417,29 +1417,39 @@
 
       try {
         if (isDown) {
-          if (!this.heldKeys[keyCode]) {
-            this.heldKeys[keyCode] = true;
-            if (sock) sock.emit('keydown', keyCode);
-            if (me.handleKeyDown) me.handleKeyDown(keyCode);
-          }
+          if (sock) sock.emit('keydown', keyCode);
+          if (me.handleKeyDown) me.handleKeyDown(keyCode);
+          this.heldKeys[keyCode] = true;
         } else {
-          if (this.heldKeys[keyCode]) {
-            this.heldKeys[keyCode] = false;
-            if (sock) sock.emit('keyup', keyCode);
-            if (me.handleKeyUp) me.handleKeyUp(keyCode);
-          }
+          if (sock) sock.emit('keyup', keyCode);
+          if (me.handleKeyUp) me.handleKeyUp(keyCode);
+          this.heldKeys[keyCode] = false;
         }
       } catch (e) {}
     }
 
-    triggerFlap(now, minInterval = CONFIG.minFlapIntervalMs, pulseDuration = CONFIG.flapPulseDurationMs) {
+    triggerFlap(now = Date.now(), minInterval = 50, pulseDuration = 40) {
       if (now - this.lastFlapTime < minInterval) return false;
       this.lastFlapTime = now;
-      this.sendKey(38, true);
-      if (this.flapTimeout) clearTimeout(this.flapTimeout);
-      this.flapTimeout = setTimeout(() => {
-        this.sendKey(38, false);
-      }, pulseDuration);
+      const sock = window.socket || (typeof socket !== 'undefined' ? socket : null);
+      const me = typeof world !== 'undefined' ? world.dude : null;
+      if (!me) return false;
+
+      try {
+        if (me.handleKeyUp) me.handleKeyUp(38);
+        if (sock) sock.emit('keyup', 38);
+
+        if (me.handleKeyDown) me.handleKeyDown(38);
+        if (sock) sock.emit('keydown', 38);
+
+        if (this.flapTimeout) clearTimeout(this.flapTimeout);
+        this.flapTimeout = setTimeout(() => {
+          const curMe = typeof world !== 'undefined' ? world.dude : null;
+          const curSock = window.socket || (typeof socket !== 'undefined' ? socket : null);
+          if (curMe && curMe.handleKeyUp) curMe.handleKeyUp(38);
+          if (curSock) curSock.emit('keyup', 38);
+        }, pulseDuration);
+      } catch (e) {}
       return true;
     }
 
@@ -1561,10 +1571,16 @@
       if (me.y > H - CONFIG.floorSafeY && me.vy > -0.5) {
         wantsFlap = true;
       }
+      if (me.grounded) {
+        wantsFlap = true;
+      }
 
       let targetDir = 0;
       if (action === ACTIONS.LEFT || action === ACTIONS.LEFT_FLAP) targetDir = -1;
       else if (action === ACTIONS.RIGHT || action === ACTIONS.RIGHT_FLAP) targetDir = 1;
+      else if (me.grounded) {
+        targetDir = me.facingRight ? 1 : -1;
+      }
 
       if (targetDir === -1) {
         this.sendKey(39, false);
@@ -2888,21 +2904,25 @@
       const worldHeight = (typeof world !== 'undefined' && world.height) || 600;
 
       if (this.hasValidLastState && this.isLearning) {
-        const reward = this.rewardEngine.computeReward(
-          me,
-          this.currentState,
-          this.lastAction,
-          enemies,
-          worldHeight
-        );
-        this.episodeReward += reward;
+        try {
+          const reward = this.rewardEngine.computeReward(
+            me,
+            this.currentState,
+            this.lastAction,
+            enemies,
+            worldHeight
+          );
+          this.episodeReward += reward;
 
-        const done = me.dead;
-        const futureTarget = this.extractFutureGroundTruth(me, (typeof world !== 'undefined' && world.players) ? world.players : [], (typeof world !== 'undefined' && world.width) || 1168, worldHeight, (typeof world !== 'undefined' && world.platform) ? world.platform : []);
-        this.replay.push(this.nextState, this.lastAction, reward, this.currentState, futureTarget, done);
+          const done = me.dead;
+          const futureTarget = this.extractFutureGroundTruth(me, (typeof world !== 'undefined' && world.players) ? world.players : [], (typeof world !== 'undefined' && world.width) || 1168, worldHeight, (typeof world !== 'undefined' && world.platform) ? world.platform : []);
+          this.replay.push(this.nextState, this.lastAction, reward, this.currentState, futureTarget, done);
 
-        if (this.totalSteps % CONFIG.trainFrequencyTicks === 0 && this.replay.size >= CONFIG.minReplayBeforeTrain) {
-          this.trainBatch();
+          if (this.totalSteps % CONFIG.trainFrequencyTicks === 0 && this.replay.size >= CONFIG.minReplayBeforeTrain) {
+            this.trainBatch();
+          }
+        } catch (err) {
+          console.warn('[Q-Bot] Online training tick warning:', err);
         }
       }
 
