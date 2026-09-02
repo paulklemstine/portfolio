@@ -2086,22 +2086,23 @@
         </style>
         <div class="header">
           <div style="display:flex; align-items:center; gap:6px;">
-            <span>🛡️ APEX AI</span>
-            <span id="hud-status" class="badge badge-neutral">INIT</span>
+            <span>🧠 NEURAL NET AI</span>
+            <span id="hud-status" class="badge badge-neutral">32-DIM ENN</span>
           </div>
           <button id="hud-btn-min" class="btn-icon" title="Minimize / Expand Overlay">−</button>
         </div>
         <div id="hud-body">
           <div class="stat-grid">
+            <div class="stat-row"><span>Architecture:</span><span class="stat-val" style="color:#00ffcc">32-Input ENN</span></div>
             <div class="stat-row"><span>Kills / Deaths:</span><span id="hud-kd" class="stat-val">0 / 0 (0.00)</span></div>
             <div class="stat-row"><span>Episode Reward:</span><span id="hud-rew" class="stat-val">+0.0</span></div>
-            <div class="stat-row"><span>Epsilon (ε):</span><span id="hud-eps" class="stat-val">0.16</span></div>
+            <div class="stat-row"><span>Epsilon (ε):</span><span id="hud-eps" class="stat-val">0.02</span></div>
             <div class="stat-row"><span>Replay Size:</span><span id="hud-replay" class="stat-val">0</span></div>
-            <div class="stat-row"><span>Avg Loss:</span><span id="hud-loss" class="stat-val">0.000</span></div>
+            <div class="stat-row"><span>Inference:</span><span class="stat-val" style="color:#00ffcc">100% Neural Net</span></div>
             <div class="stat-row"><span>Shield Status:</span><span id="hud-combo" class="stat-val">IRONCLAD</span></div>
           </div>
           <div class="q-section">
-            <div class="q-title">Q-Values & Zero-Death Action Vetoes</div>
+            <div class="q-title">Neural Network Output Q-Values (7 Actions)</div>
             <div id="hud-q-bars"></div>
           </div>
           <div class="controls">
@@ -2110,7 +2111,7 @@
             <button id="hud-btn-explore" class="active-toggle">Exploration: ON</button>
             <button id="hud-btn-save">💾 Save Model</button>
             <button id="hud-btn-export">⬇️ Export JSON</button>
-            <button id="hud-btn-reset" style="border-color: #ff5252; color: #ff5252;">⚠️ Reset Q</button>
+            <button id="hud-btn-reset" style="border-color: #ff5252; color: #ff5252;">⚠️ Reset Weights</button>
           </div>
         </div>
       `;
