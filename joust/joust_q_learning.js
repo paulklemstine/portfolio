@@ -2529,12 +2529,22 @@
         for (let i = 0; i < traj.length; i++) {
           const px = (traj[i].x + 8) * scale;
           const py = (traj[i].y + 10) * scale;
-          if (i === 0) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
+          if (i === 0) {
+            ctx.moveTo(px, py);
+          } else {
+            // Handle toroidal screen wrapping smoothly so lines don't streak across the screen
+            if (Math.abs(traj[i].x - traj[i - 1].x) > (W - 16) / 2) {
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.moveTo(px, py);
+            } else {
+              ctx.lineTo(px, py);
+            }
+          }
         }
         ctx.stroke();
 
-        // Arrowhead at the end of the trajectory line
+        // Arrowhead at the end of the hero's trajectory line
         const lastIdx = traj.length - 1;
         const prevIdx = Math.max(0, lastIdx - 1);
         const p1x = (traj[prevIdx].x + 8) * scale;
@@ -2560,6 +2570,85 @@
           p2x - headLength * Math.cos(angle + Math.PI / 6),
           p2y - headLength * Math.sin(angle + Math.PI / 6)
         );
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Visual Overlay for ALL Players' Predicted Future Tracks
+      const worldPlayers = (typeof world !== 'undefined' && world.players) ? world.players : [];
+      for (let i = 0; i < worldPlayers.length; i++) {
+        const p = worldPlayers[i];
+        if (!p || p.id === world.myId || p.dead) continue;
+
+        const oppTraj = [{ x: p.x, y: p.y }];
+        let enX = p.x;
+        let enY = p.y;
+        let enVx = p.vx || 0;
+        let enVy = p.vy || 0;
+
+        for (let t = 1; t <= 12; t++) {
+          if (predictor) {
+            const next = predictor.simStep(enX, enY, enVx, enVy, 0, false, W, H, platforms);
+            enX = next.x;
+            enY = next.y;
+            enVx = next.vx;
+            enVy = next.vy;
+          } else {
+            enVy += 0.15;
+            if (enVy > 8.0) enVy = 8.0;
+            enX += enVx;
+            enY += enVy;
+            const w = W - 16;
+            if (enX < 0) enX += w;
+            if (enX >= w) enX -= w;
+            if (enY < 46) enY = 46;
+          }
+          oppTraj.push({ x: enX, y: enY });
+        }
+
+        const isTeammate = (p.team === me.team);
+        const weHaveAdvantage = (me.y < p.y - 4);
+        
+        let trackColor;
+        if (isTeammate) {
+          trackColor = 'rgba(0, 230, 118, 0.55)'; // Friendly green
+        } else if (weHaveAdvantage) {
+          trackColor = 'rgba(255, 215, 0, 0.75)'; // Golden vulnerable target
+        } else {
+          trackColor = 'rgba(255, 40, 90, 0.75)'; // Crimson lethal threat above
+        }
+
+        ctx.beginPath();
+        ctx.strokeStyle = trackColor;
+        ctx.lineWidth = 1.6;
+        ctx.setLineDash([4, 3]);
+
+        for (let t = 0; t < oppTraj.length; t++) {
+          const pt = oppTraj[t];
+          const px = (pt.x + 8) * scale;
+          const py = (pt.y + 10) * scale;
+
+          if (t === 0) {
+            ctx.moveTo(px, py);
+          } else {
+            if (Math.abs(pt.x - oppTraj[t - 1].x) > (W - 16) / 2) {
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.moveTo(px, py);
+            } else {
+              ctx.lineTo(px, py);
+            }
+          }
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Small directional tick at the predicted future endpoint
+        const lastPt = oppTraj[oppTraj.length - 1];
+        ctx.beginPath();
+        ctx.arc((lastPt.x + 8) * scale, (lastPt.y + 10) * scale, 3.2 * scale * 0.5, 0, 2 * Math.PI);
+        ctx.fillStyle = trackColor;
+        ctx.fill();
       }
     }
 
