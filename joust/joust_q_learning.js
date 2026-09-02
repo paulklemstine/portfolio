@@ -1226,6 +1226,16 @@
           tCPA = Math.max(0, Math.min(30, -(dx * relVx + dy * relVy) / relV2));
         }
 
+        const closingRate = -(dx * relVx) / (Math.abs(dx) + 1e-5);
+        
+        // Fluid Kill Opportunity Score: rank by highest probability and speed of quick elimination
+        const altitudeAdvantage = (p.y - me.y); // positive = we are above opponent (kill on contact)
+        const killOpportunityScore = (p.dead ? -999999 : 0) +
+          (altitudeAdvantage > 4 ? 3000 + altitudeAdvantage * 20 : altitudeAdvantage * 10) +
+          (closingRate > 0 ? closingRate * 250 : closingRate * 100) -
+          (dist * 2.0) -
+          (tCPA * 50.0);
+
         allOpponents.push({
           player: p,
           dx,
@@ -1235,6 +1245,7 @@
           vy: p.vy || 0,
           isAbove,
           dead: p.dead,
+          killOpportunityScore,
           dx6,
           dy6,
           dist6,
@@ -1253,11 +1264,11 @@
       out[22] = (allOpponents.length > 0 && allOpponents[0].dy > 8) ? 1.0 : -1.0; // Target vulnerable
       out[23] = (allOpponents.length > 0 && allOpponents[0].isAbove6) ? 1.0 : -1.0; // 6-tick strike valid
 
-      // Sort so nearest threat/target is Slot 0
+      // Sort by highest quick-defeat opportunity so neural network naturally flows to best target
       allOpponents.sort((a, b) => {
         if (a.dead && !b.dead) return 1;
         if (!a.dead && b.dead) return -1;
-        return a.dist - b.dist;
+        return b.killOpportunityScore - a.killOpportunityScore;
       });
 
       const MAX_OPPONENTS = 17;
@@ -1532,41 +1543,10 @@
           }
         }
 
-        // 4. Grounded Take-off Assist: Never linger grounded on platforms
+        // Grounded Take-off Assist: Never linger grounded on platforms
         if (me && me.grounded && !isEmergency) {
           if (a === ACTIONS.LEFT_FLAP || a === ACTIONS.RIGHT_FLAP || a === ACTIONS.FLAP) {
             effectiveQ += 4.0;
-          }
-        }
-
-        // 5. EXTREME PREDATOR AGGRESSION: ALWAYS HUNT & GET CLOSER TO ENEMY AT ALL TIMES
-        const target = env ? env.lockedTarget : null;
-        if (target && !target.dead) {
-          const tDx = env.shortestToroidalDx(me.x, target.x, W);
-          const tDy = target.y - me.y; // positive = target is below us
-          const targetDist = Math.hypot(tDx, tDy);
-
-          // (A) HORIZONTAL CLOSING RUSH: Charge directly towards enemy, never retreat
-          if (tDx > 2) {
-            if (a === ACTIONS.RIGHT || a === ACTIONS.RIGHT_FLAP) effectiveQ += 7.0;
-            if (a === ACTIONS.LEFT || a === ACTIONS.LEFT_FLAP) effectiveQ -= 8.5;
-          } else if (tDx < -2) {
-            if (a === ACTIONS.LEFT || a === ACTIONS.LEFT_FLAP) effectiveQ += 7.0;
-            if (a === ACTIONS.RIGHT || a === ACTIONS.RIGHT_FLAP) effectiveQ -= 8.5;
-          }
-
-          // (B) LETHAL DIVE & CLIMB AGGRESSION
-          if (tDy > 10 && targetDist < 300) {
-            // Above enemy: Guillotine Head-Strike
-            if ((tDx > 0 && (a === ACTIONS.RIGHT || a === ACTIONS.RIGHT_FLAP)) ||
-                (tDx < 0 && (a === ACTIONS.LEFT || a === ACTIONS.LEFT_FLAP))) {
-              effectiveQ += 8.5;
-            }
-          } else if (tDy < -2) {
-            // Enemy is above: Rapid climb while relentlessly closing horizontal distance
-            if (a === ACTIONS.FLAP || a === ACTIONS.LEFT_FLAP || a === ACTIONS.RIGHT_FLAP) {
-              effectiveQ += 6.5;
-            }
           }
         }
 
@@ -2572,58 +2552,6 @@
           p2x - headLength * Math.cos(angle + Math.PI / 6),
           p2y - headLength * Math.sin(angle + Math.PI / 6)
         );
-        ctx.closePath();
-        ctx.fill();
-      }
-
-      // 3. Predator Target Beam & Target Reticle
-      const target = this.ctrl.env.lockedTarget;
-      if (target && !target.dead) {
-        const actualEnX = (target.x + 8) * scale;
-        const actualEnY = (target.y + 10) * scale;
-
-        const dx = this.ctrl.env.shortestToroidalDx(me.x, target.x, W);
-        const targetBeamX = meCenterX + dx * scale;
-        const targetBeamY = (target.y + 10) * scale;
-
-        ctx.beginPath();
-        ctx.setLineDash([6, 4]);
-        ctx.strokeStyle = isEmergency ? '#ff1744' : (inLethalDive ? '#ffeb3b' : (isAdvantage ? 'rgba(0, 255, 100, 0.9)' : 'rgba(255, 50, 50, 0.85)'));
-        ctx.lineWidth = inLethalDive ? 3 : 2;
-        ctx.moveTo(meCenterX, meCenterY);
-        ctx.lineTo(targetBeamX, targetBeamY);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Target Lock Reticle
-        ctx.beginPath();
-        ctx.arc(actualEnX, actualEnY, 15 * scale * 0.5, 0, 2 * Math.PI);
-        ctx.strokeStyle = isAdvantage ? '#00ff66' : '#ff3333';
-        ctx.lineWidth = 2.5;
-        ctx.stroke();
-
-        // Crosshair ticks
-        const rTick = 18 * scale * 0.5;
-        ctx.beginPath();
-        ctx.moveTo(actualEnX - rTick, actualEnY); ctx.lineTo(actualEnX + rTick, actualEnY);
-        ctx.moveTo(actualEnX, actualEnY - rTick); ctx.lineTo(actualEnX, actualEnY + rTick);
-        ctx.strokeStyle = isAdvantage ? 'rgba(0, 255, 100, 0.6)' : 'rgba(255, 50, 50, 0.6)';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-
-        // Intercept Lead Point
-        const intercept = this.ctrl.env.interceptPt;
-        if (intercept) {
-          const intX = (intercept.x + 8) * scale;
-          const intY = (intercept.y + 10) * scale;
-          ctx.beginPath();
-          ctx.arc(intX, intY, 5 * scale * 0.5, 0, 2 * Math.PI);
-          ctx.strokeStyle = '#ff007f';
-          ctx.lineWidth = 2;
-          ctx.stroke();
-          ctx.fillStyle = 'rgba(255, 0, 127, 0.4)';
-          ctx.fill();
-        }
       }
     }
 
