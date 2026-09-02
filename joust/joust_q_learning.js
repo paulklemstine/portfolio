@@ -2088,21 +2088,21 @@
         </style>
         <div class="header">
           <div style="display:flex; align-items:center; gap:6px;">
-            <span>🧠 NEURAL NET AI</span>
-            <span id="hud-status" class="badge badge-neutral">32-DIM ENN</span>
+            <span>🧠 APEX CHIMERA AI</span>
+            <span id="hud-status" class="badge badge-neutral">4 SPECIALTIES</span>
           </div>
           <button id="hud-btn-min" class="btn-icon" title="Minimize / Expand Overlay">−</button>
         </div>
         <div id="hud-body">
           <div class="stat-grid">
-            <div class="stat-row"><span>Architecture:</span><span id="hud-arch" class="stat-val" style="color:#00ffcc">32-Input ENN</span></div>
-            <div class="stat-row"><span>Kills / Deaths:</span><span id="hud-kd" class="stat-val">0 / 0 (0.00)</span></div>
+            <div class="stat-row"><span>Architecture:</span><span id="hud-arch" class="stat-val" style="color:#00ffcc">Omni-Specialty ENN</span></div>
             <div class="stat-row"><span>Episode Reward:</span><span id="hud-rew" class="stat-val">+0.0</span></div>
-            <div class="stat-row"><span>Speed Ratio:</span><span id="hud-speed" class="stat-val">0%</span></div>
-            <div class="stat-row"><span>Epsilon (ε):</span><span id="hud-eps" class="stat-val">0.02</span></div>
-            <div class="stat-row"><span>Replay Size:</span><span id="hud-replay" class="stat-val">0</span></div>
+            <div class="stat-row"><span>🦅 Falcon (Speed):</span><span id="hud-speed" class="stat-val">0%</span></div>
+            <div class="stat-row"><span>🐍 Viper (Wrap):</span><span id="hud-wrap" class="stat-val">READY</span></div>
+            <div class="stat-row"><span>⚡ Striker (Combo):</span><span id="hud-combo" class="stat-val">IRONCLAD</span></div>
+            <div class="stat-row"><span>👑 Sovereign (K/D):</span><span id="hud-kd" class="stat-val">0 / 0 (0.00)</span></div>
+            <div class="stat-row"><span>Epsilon (ε):</span><span id="hud-eps" class="stat-val">0.01</span></div>
             <div class="stat-row"><span>Inference:</span><span class="stat-val" style="color:#00ffcc">100% Neural Net</span></div>
-            <div class="stat-row"><span>Combos:</span><span id="hud-combo" class="stat-val">IRONCLAD</span></div>
           </div>
           <div class="q-section">
             <div class="q-title">Neural Network Output Q-Values (7 Actions)</div>
@@ -2148,6 +2148,7 @@
         kd: this.container.querySelector("#hud-kd"),
         rew: this.container.querySelector("#hud-rew"),
         speed: this.container.querySelector("#hud-speed"),
+        wrap: this.container.querySelector("#hud-wrap"),
         eps: this.container.querySelector("#hud-eps"),
         replay: this.container.querySelector("#hud-replay"),
         combo: this.container.querySelector("#hud-combo"),
@@ -2246,6 +2247,8 @@
       if (this.metricsEls.kd) this.metricsEls.kd.textContent = `${kills} / ${deaths} (${kd})`;
       if (this.metricsEls.rew) this.metricsEls.rew.textContent = `${reward >= 0 ? '+' : ''}${this.ctrl.episodeReward.toFixed(1)}`;
       if (this.metricsEls.speed) this.metricsEls.speed.textContent = `${speedRatio}%`;
+      const isWrapFlank = state && state[25] > 0;
+      if (this.metricsEls.wrap) this.metricsEls.wrap.textContent = isWrapFlank ? '⚡ FLANKING' : 'READY';
       if (this.metricsEls.eps) this.metricsEls.eps.textContent = this.ctrl.epsilon.toFixed(3);
       if (this.metricsEls.replay) this.metricsEls.replay.textContent = `${this.ctrl.replay.size} / ${CONFIG.replayCapacity}`;
       if (this.metricsEls.combo) this.metricsEls.combo.textContent = isEmergency ? '⚠️ REFLEX EVASION' : (combo > 1 ? `⚡ x${combo} STREAK` : '🛡️ IRONCLAD');
