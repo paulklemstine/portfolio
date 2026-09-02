@@ -1773,25 +1773,28 @@
     }
 
     triggerCombo(comboCount, killsGained, x, y) {
-      let title = "ELIMINATED!";
-      let sub = "FIRST BLOOD";
-      let pts = comboCount * 250;
+      // Only show Mortal Kombat feedback when combos are 2 or more
+      if (!comboCount || comboCount < 2) return;
+
+      let title = "BRUTALITY!";
+      let sub = "🔥 2-HIT COMBO 🔥";
+      let pts = 650;
 
       if (comboCount === 2) {
-        title = "DOUBLE KILL!";
-        sub = "🔥 SWIFT COMBO x2 🔥";
+        title = "BRUTALITY!";
+        sub = "🔥 2-HIT COMBO 🔥";
         pts = 650;
       } else if (comboCount === 3) {
-        title = "TRIPLE KILL!";
-        sub = "⚡ MULTI-STRIKE x3 ⚡";
+        title = "TOASTY!";
+        sub = "⚡ SUPERB! 3-HIT COMBO ⚡";
         pts = 1300;
       } else if (comboCount === 4) {
-        title = "ULTRA COMBO!";
-        sub = "💀 RELENTLESS CHAIN x4 💀";
+        title = "FATALITY!";
+        sub = "💀 OUTSTANDING! 4-HIT COMBO 💀";
         pts = 2200;
       } else if (comboCount >= 5) {
-        title = "FATALITY!";
-        sub = "👑 GODLIKE RAMPAGE x" + comboCount + " 👑";
+        title = "FLAWLESS VICTORY!";
+        sub = `🩸 GODLIKE! ${comboCount}-HIT COMBO 🩸`;
         pts = 3500 + (comboCount - 5) * 1000;
       }
 
