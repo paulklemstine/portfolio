@@ -2407,30 +2407,56 @@
       ctx.stroke();
 
       // 2. Predictive Tick Trajectory Line (14-tick forward kinematic prediction with tick marks)
-      const myPred = this.ctrl.env.lastMyPrediction;
-      if (myPred && myPred.trajectory && myPred.trajectory.length > 1) {
+      const traj = [{ x: me.x, y: me.y }];
+      let simX = me.x;
+      let simY = me.y;
+      let simVx = me.vx || 0;
+      let simVy = me.vy || 0;
+      const predictor = this.ctrl && this.ctrl.env ? this.ctrl.env.predictor : null;
+      const platforms = (typeof world !== "undefined" && world.platform) || [];
+      const predTicks = 14;
+
+      for (let t = 1; t <= predTicks; t++) {
+        if (predictor) {
+          const next = predictor.simStep(simX, simY, simVx, simVy, 0, false, W, H, platforms);
+          simX = next.x;
+          simY = next.y;
+          simVx = next.vx;
+          simVy = next.vy;
+        } else {
+          simVy += 0.15;
+          if (simVy > 8.0) simVy = 8.0;
+          simX += simVx;
+          simY += simVy;
+          const w = W - 16;
+          if (simX < 0) simX += w;
+          if (simX >= w) simX -= w;
+          if (simY < 46) simY = 46;
+        }
+        traj.push({ x: simX, y: simY });
+      }
+
+      if (traj.length > 1) {
         ctx.beginPath();
         ctx.strokeStyle = isEmergency ? '#ff1744' : (inLethalDive ? '#ffeb3b' : 'rgba(0, 255, 204, 0.9)');
         ctx.lineWidth = inLethalDive ? 3.5 : 2.5;
-        for (let i = 0; i < myPred.trajectory.length; i++) {
-          const pt = myPred.trajectory[i];
-          const px = (pt.x + 8) * scale;
-          const py = (pt.y + 10) * scale;
+        for (let i = 0; i < traj.length; i++) {
+          const px = (traj[i].x + 8) * scale;
+          const py = (traj[i].y + 10) * scale;
           if (i === 0) ctx.moveTo(px, py);
           else ctx.lineTo(px, py);
         }
         ctx.stroke();
 
         // Tick marks along predicted future trajectory
-        for (let i = 1; i < myPred.trajectory.length; i++) {
-          const pt = myPred.trajectory[i];
-          const px = (pt.x + 8) * scale;
-          const py = (pt.y + 10) * scale;
+        for (let i = 1; i < traj.length; i++) {
+          const px = (traj[i].x + 8) * scale;
+          const py = (traj[i].y + 10) * scale;
 
           ctx.beginPath();
-          const dotRadius = (i === myPred.trajectory.length - 1) ? 4.5 * scale * 0.5 : (i % 2 === 0 ? 2.5 * scale * 0.5 : 1.5 * scale * 0.5);
+          const dotRadius = (i === traj.length - 1) ? 4.5 * scale * 0.5 : (i % 2 === 0 ? 2.5 * scale * 0.5 : 1.5 * scale * 0.5);
           ctx.arc(px, py, dotRadius, 0, 2 * Math.PI);
-          ctx.fillStyle = (i === myPred.trajectory.length - 1) ? (isEmergency ? '#ff1744' : '#ffeb3b') : 'rgba(0, 255, 204, 0.85)';
+          ctx.fillStyle = (i === traj.length - 1) ? (isEmergency ? '#ff1744' : '#ffeb3b') : 'rgba(0, 255, 204, 0.9)';
           ctx.fill();
         }
       }
