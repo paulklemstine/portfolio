@@ -693,12 +693,12 @@
   }
 
   class QNetwork {
-    constructor(stateDim, actionDim, h1Size = 192, h2Size = 96, predDim = 72) {
+    constructor(stateDim = 128, actionDim = 7, h1Size = 128, h2Size = 64, predDim = 32) {
       this.stateDim = stateDim;
       this.actionDim = actionDim;
       this.h1Size = h1Size;
       this.h2Size = h2Size;
-      this.predDim = predDim; // 4 hero future coords (t+6, t+12) + 68 coords for 17 opponents (t+6, t+12)
+      this.predDim = predDim;
 
       this.l1 = new DenseLayer(stateDim, h1Size);
       this.l2 = new DenseLayer(h1Size, h2Size);
@@ -869,7 +869,7 @@
   // EXPERIENCE REPLAY BUFFER (WITH WORLD MODEL FUTURE TRAJECTORY TARGETS)
   // ==========================================================================
   class ReplayBuffer {
-    constructor(capacity, stateDim, predDim = 72) {
+    constructor(capacity, stateDim = 128, predDim = 32) {
       this.capacity = capacity;
       this.stateDim = stateDim;
       this.predDim = predDim;
@@ -892,7 +892,10 @@
       this.states.set(state, sOffset);
       this.nextStates.set(nextState, sOffset);
       if (futureTarget) {
-        this.futureTargets.set(futureTarget, fOffset);
+        const len = Math.min(futureTarget.length, this.predDim);
+        for (let i = 0; i < len; i++) {
+          this.futureTargets[fOffset + i] = futureTarget[i];
+        }
       }
       this.actions[idx] = action;
       this.rewards[idx] = reward;
@@ -904,7 +907,10 @@
 
     getFutureTarget(idx, out) {
       const fOffset = idx * this.predDim;
-      out.set(this.futureTargets.subarray(fOffset, fOffset + this.predDim));
+      const len = Math.min(out.length, this.predDim);
+      for (let i = 0; i < len; i++) {
+        out[i] = this.futureTargets[fOffset + i];
+      }
     }
 
     sample(batchSize) {
@@ -2790,11 +2796,11 @@
       this.rewardEngine.ctrl = this;
       this.tacticalCore = new EngineAccurateTacticalCore(this);
 
-      this.qNet = new QNetwork(CONFIG.stateDim, CONFIG.actionDim, 64);
-      this.targetNet = new QNetwork(CONFIG.stateDim, CONFIG.actionDim, 64);
+      this.qNet = new QNetwork(CONFIG.stateDim, CONFIG.actionDim, CONFIG.h1Size, CONFIG.h2Size, CONFIG.predDim);
+      this.targetNet = new QNetwork(CONFIG.stateDim, CONFIG.actionDim, CONFIG.h1Size, CONFIG.h2Size, CONFIG.predDim);
       this.targetNet.copyFrom(this.qNet);
 
-      this.replay = new ReplayBuffer(CONFIG.replayCapacity, CONFIG.stateDim);
+      this.replay = new ReplayBuffer(CONFIG.replayCapacity, CONFIG.stateDim, CONFIG.predDim);
 
       this.currentState = new Float32Array(CONFIG.stateDim);
       this.nextState = new Float32Array(CONFIG.stateDim);
