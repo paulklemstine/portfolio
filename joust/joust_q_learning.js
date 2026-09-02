@@ -1187,13 +1187,17 @@
       out[17] = lastAction / 6.0;
       out[18] = (me.y < 220) ? 1.0 : -1.0;
 
-      // 2. MULTI-PLAYER SENSORY GRID WITH FUTURE PROJECTIONS (Indices 24 to 295: 17 Opponents x 16 Features)
-      const allOpponents = [];
+      // 2. MULTI-PLAYER SENSORY GRID (Indices 24 to 295: 17 Opponents x 16 Features = 272 Features)
+      // Track all enemies at once simultaneously - no artificial slots or sorting!
+      // The neural network internally evaluates the entire multi-enemy field.
       const worldPlayers = (typeof world !== 'undefined' && world.players) ? world.players : [];
       const myFuture6 = this.predictKinematics(me.x, me.y, me.vx || 0, me.vy || 0, 6, W, H, platforms);
       const myFuture12 = this.predictKinematics(me.x, me.y, me.vx || 0, me.vy || 0, 12, W, H, platforms);
 
-      for (let i = 0; i < worldPlayers.length; i++) {
+      let oppCount = 0;
+      const MAX_OPPONENTS = 17;
+
+      for (let i = 0; i < worldPlayers.length && oppCount < MAX_OPPONENTS; i++) {
         const p = worldPlayers[i];
         if (!p || p.id === world.myId || p.team === me.team) continue;
 
@@ -1227,93 +1231,54 @@
         }
 
         const closingRate = -(dx * relVx) / (Math.abs(dx) + 1e-5);
-        
-        // Fluid Kill Opportunity Score: rank by highest probability and speed of quick elimination
-        const altitudeAdvantage = (p.y - me.y); // positive = we are above opponent (kill on contact)
-        const killOpportunityScore = (p.dead ? -999999 : 0) +
-          (altitudeAdvantage > 4 ? 3000 + altitudeAdvantage * 20 : altitudeAdvantage * 10) +
-          (closingRate > 0 ? closingRate * 250 : closingRate * 100) -
-          (dist * 2.0) -
-          (tCPA * 50.0);
 
-        allOpponents.push({
-          player: p,
-          dx,
-          dy,
-          dist,
-          vx: p.vx || 0,
-          vy: p.vy || 0,
-          isAbove,
-          dead: p.dead,
-          killOpportunityScore,
-          dx6,
-          dy6,
-          dist6,
-          isAbove6: myFuture6.y < oppFuture6.y - 4,
-          dx12,
-          dy12,
-          dist12,
-          tCPA
-        });
+        const baseIdx = 24 + oppCount * 16;
+        out[baseIdx + 0] = dx / (W / 2);
+        out[baseIdx + 1] = dy / H;
+        out[baseIdx + 2] = (p.vx || 0) / maxSpd;
+        out[baseIdx + 3] = (p.vy || 0) / 8.0;
+        out[baseIdx + 4] = Math.min(1.0, dist / 800.0);
+        out[baseIdx + 5] = isAbove ? 1.0 : -1.0;
+        out[baseIdx + 6] = Math.max(-1.0, Math.min(1.0, closingRate / maxSpd));
+        out[baseIdx + 7] = p.dead ? -1.0 : 1.0;
+        out[baseIdx + 8] = dx6 / (W / 2);
+        out[baseIdx + 9] = dy6 / H;
+        out[baseIdx + 10] = Math.min(1.0, dist6 / 800.0);
+        out[baseIdx + 11] = (myFuture6.y < oppFuture6.y - 4) ? 1.0 : -1.0;
+        out[baseIdx + 12] = dx12 / (W / 2);
+        out[baseIdx + 13] = dy12 / H;
+        out[baseIdx + 14] = Math.min(1.0, dist12 / 800.0);
+        out[baseIdx + 15] = Math.min(1.0, tCPA / 30.0);
+
+        oppCount++;
       }
 
       // Swarm & Corridor Context Features (Indices 19 to 23)
       out[19] = Math.min(1.0, enemiesWithin250 / 6.0);
       out[20] = (leftEnemyCount > 0 && rightEnemyCount > 0) ? 1.0 : -1.0; // Pinch hazard
       out[21] = threatsAboveWithin200 === 0 ? 1.0 : -1.0; // Safe airspace
-      out[22] = (allOpponents.length > 0 && allOpponents[0].dy > 8) ? 1.0 : -1.0; // Target vulnerable
-      out[23] = (allOpponents.length > 0 && allOpponents[0].isAbove6) ? 1.0 : -1.0; // 6-tick strike valid
+      out[22] = threatsAboveWithin200 === 0 && enemiesWithin250 > 0 ? 1.0 : -1.0; // Global offensive advantage
+      out[23] = (me.y < 120) ? 1.0 : -1.0; // Airspace dominance
 
-      // Sort by highest quick-defeat opportunity so neural network naturally flows to best target
-      allOpponents.sort((a, b) => {
-        if (a.dead && !b.dead) return 1;
-        if (!a.dead && b.dead) return -1;
-        return b.killOpportunityScore - a.killOpportunityScore;
-      });
-
-      const MAX_OPPONENTS = 17;
-      for (let k = 0; k < MAX_OPPONENTS; k++) {
+      // Fill remaining opponent channels
+      for (let k = oppCount; k < MAX_OPPONENTS; k++) {
         const baseIdx = 24 + k * 16;
-        if (k < allOpponents.length) {
-          const opp = allOpponents[k];
-          out[baseIdx + 0] = opp.dx / (W / 2);
-          out[baseIdx + 1] = opp.dy / H;
-          out[baseIdx + 2] = opp.vx / maxSpd;
-          out[baseIdx + 3] = opp.vy / 8.0;
-          out[baseIdx + 4] = Math.min(1.0, opp.dist / 800.0);
-          out[baseIdx + 5] = opp.isAbove ? 1.0 : -1.0;
-
-          const relVx = opp.vx - (me.vx || 0);
-          const closingRate = -(opp.dx * relVx) / (Math.abs(opp.dx) + 1e-5);
-          out[baseIdx + 6] = Math.max(-1.0, Math.min(1.0, closingRate / maxSpd));
-          out[baseIdx + 7] = opp.dead ? -1.0 : 1.0;
-
-          out[baseIdx + 8] = opp.dx6 / (W / 2);
-          out[baseIdx + 9] = opp.dy6 / H;
-          out[baseIdx + 10] = Math.min(1.0, opp.dist6 / 800.0);
-          out[baseIdx + 11] = opp.isAbove6 ? 1.0 : -1.0;
-          out[baseIdx + 12] = opp.dx12 / (W / 2);
-          out[baseIdx + 13] = opp.dy12 / H;
-          out[baseIdx + 14] = Math.min(1.0, opp.dist12 / 800.0);
-          out[baseIdx + 15] = Math.min(1.0, opp.tCPA / 30.0);
-        } else {
-          out[baseIdx + 0] = 0.0;
-          out[baseIdx + 1] = 0.0;
-          out[baseIdx + 2] = 0.0;
-          out[baseIdx + 3] = 0.0;
-          out[baseIdx + 4] = 1.0;
-          out[baseIdx + 5] = 1.0;
-          out[baseIdx + 6] = 0.0;
-          out[baseIdx + 7] = -1.0;
-          out[baseIdx + 8] = 0.0;
-          out[baseIdx + 9] = 0.0;
-          out[baseIdx + 10] = 1.0;
-          out[baseIdx + 11] = 1.0;
-          out[baseIdx + 12] = 0.0;
-          out[baseIdx + 13] = 0.0;
-          out[baseIdx + 14] = 1.0;
-          out[baseIdx + 15] = 1.0;
-        }
+        out[baseIdx + 0] = 0.0;
+        out[baseIdx + 1] = 0.0;
+        out[baseIdx + 2] = 0.0;
+        out[baseIdx + 3] = 0.0;
+        out[baseIdx + 4] = 1.0;
+        out[baseIdx + 5] = 1.0;
+        out[baseIdx + 6] = 0.0;
+        out[baseIdx + 7] = -1.0;
+        out[baseIdx + 8] = 0.0;
+        out[baseIdx + 9] = 0.0;
+        out[baseIdx + 10] = 1.0;
+        out[baseIdx + 11] = 1.0;
+        out[baseIdx + 12] = 0.0;
+        out[baseIdx + 13] = 0.0;
+        out[baseIdx + 14] = 1.0;
+        out[baseIdx + 15] = 1.0;
       }
 
       // 3. PLATFORM GEOMETRY SENSORY GRID (Indices 296 to 343: 8 Platforms x 6 Features)
