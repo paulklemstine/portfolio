@@ -63,7 +63,7 @@
     predatorExplorationRatio: 0.8, // Bias exploration towards safe lethal maneuvers
 
     // Dimensions
-    stateDim: 24,
+    stateDim: 32,
     actionDim: 7,
 
     // Storage
@@ -797,17 +797,24 @@
     }
 
     fromJSON(data) {
-      if (data.stateDim !== this.stateDim || data.actionDim !== this.actionDim) {
-        console.error('[Q-Bot] Model dimension mismatch on load');
-        return false;
+      if (!data) return false;
+      const l1W = data.l1.weights || data.l1.w;
+      const l1B = data.l1.biases || data.l1.b;
+      const l2W = data.l2.weights || data.l2.w;
+      const l2B = data.l2.biases || data.l2.b;
+      const l3W = data.l3.weights || data.l3.w;
+      const l3B = data.l3.biases || data.l3.b;
+
+      if (l1W && l1B && l2W && l2B && l3W && l3B) {
+        this.l1.weights.set(l1W);
+        this.l1.biases.set(l1B);
+        this.l2.weights.set(l2W);
+        this.l2.biases.set(l2B);
+        this.l3.weights.set(l3W);
+        this.l3.biases.set(l3B);
+        return true;
       }
-      this.l1.weights.set(data.l1.w);
-      this.l1.biases.set(data.l1.b);
-      this.l2.weights.set(data.l2.w);
-      this.l2.biases.set(data.l2.b);
-      this.l3.weights.set(data.l3.w);
-      this.l3.biases.set(data.l3.b);
-      return true;
+      return false;
     }
   }
 
@@ -1202,6 +1209,39 @@
       const inApexBand = (me.y >= CONFIG.apexCruisingMinY && me.y <= CONFIG.apexCruisingMaxY);
       out[23] = inApexBand ? 1.0 : -1.0;
 
+      // Feature 24: Cruising Speed Ratio (|vx| / maxSpeed)
+      out[24] = Math.min(1.0, Math.abs(me.vx || 0) / maxSpd);
+
+      // Feature 25: Screen-Wrap Flank Opportunity
+      if (target) {
+        const rawDx = target.x - me.x;
+        const wrapDx = this.shortestToroidalDx(me.x, target.x, W);
+        out[25] = (Math.abs(wrapDx) < Math.abs(rawDx) - 40) ? 1.0 : -1.0;
+      } else {
+        out[25] = -1.0;
+      }
+
+      // Feature 26 & 27: Combo Streak & Combo Window Timer
+      out[26] = Math.min(1.0, (this.comboStreak || 0) / 4.0);
+      out[27] = Math.max(0.0, (this.comboTimer || 0) / 180.0);
+
+      // Feature 28: Flap Frequency / Aerodynamic Glide Efficiency
+      out[28] = Math.min(1.0, (this.recentFlapCount || 0) / 12.0);
+
+      // Feature 29: Vertical Lance Kill Window Alignment (Strict 4px to 32px above enemy)
+      if (target) {
+        const isKillWindow = (me.y < target.y - 4 && me.y > target.y - 32 && Math.abs(this.shortestToroidalDx(me.x, target.x, W)) < 45);
+        out[29] = isKillWindow ? 1.0 : -1.0;
+      } else {
+        out[29] = -1.0;
+      }
+
+      // Feature 30: Boundary Hazard Danger (Lava floor proximity vs safe ceiling)
+      out[30] = me.y > H - 100 ? -1.0 : (me.y < 120 ? 1.0 : 0.0);
+
+      // Feature 31: Platform Trapping & Drop Advantage
+      out[31] = (me.y < 260 && target && target.y > me.y + 30) ? 1.0 : -1.0;
+
       return true;
     }
   }
@@ -1339,18 +1379,12 @@
 
       const overhead = (env && me) ? env.predictor.getOverheadPlatformObstacle(me, platforms, W) : { blocked: false };
 
-      const gmAction = (env && me) ? this.computeGrandmasterTacticalAction(me, env, W, H, platforms) : -1;
       let bestAction = 0;
       let maxEffectiveQ = -Infinity;
 
       for (let a = 0; a < rawQValues.length; a++) {
         this.smoothedQ[a] = alpha * rawQValues[a] + (1 - alpha) * this.smoothedQ[a];
         let effectiveQ = this.smoothedQ[a] + (a === lastAction && !isEmergency ? stickyBonus : 0);
-
-        // Grandmaster Expert Prior: boost professional tactical choice
-        if (gmAction === a) {
-          effectiveQ += 5.5;
-        }
 
         // 1. HARD VETO: ZERO-DEATH LETHAL DANGER CHECK
         if (env && me) {
@@ -2779,35 +2813,40 @@
       }
     }
 
-        loadModel() {
+    loadModel() {
+      // 1. Prioritize Embedded Neural Network Champion Weights
+      if (typeof DEFAULT_PRETRAINED_MODEL !== "undefined") {
+        const rawModel = DEFAULT_PRETRAINED_MODEL.model || DEFAULT_PRETRAINED_MODEL;
+        if (rawModel && (rawModel.l1 || rawModel.weights)) {
+          try {
+            if (this.qNet.fromJSON(rawModel)) {
+              this.targetNet.copyFrom(this.qNet);
+              this.epsilon = CONFIG.epsilonMin;
+              this.isExploring = false;
+              console.log(`[Q-Bot] 🧠 ACTIVE NEURAL NETWORK: Loaded Champion Weights (stateDim=${this.qNet.stateDim}, ε=${this.epsilon.toFixed(3)}).`);
+              return true;
+            }
+          } catch (e) {
+            console.error('[Q-Bot] Failed loading embedded neural network weights:', e);
+          }
+        }
+      }
+
+      // 2. Fallback to localStorage
       try {
         const raw = localStorage.getItem(CONFIG.storageKey);
         if (raw) {
           const data = JSON.parse(raw);
-          if (data.model && this.qNet.fromJSON(data.model)) {
+          const rawModel = data.model || data;
+          if (rawModel && this.qNet.fromJSON(rawModel)) {
             this.targetNet.copyFrom(this.qNet);
             this.epsilon = data.epsilon || CONFIG.epsilonInitial;
-            this.totalKills = data.totalKills || 0;
-            this.totalDeaths = data.totalDeaths || 0;
-            console.log(`[Q-Bot] Loaded Zero-Death model (${data.totalSteps || 0} steps, ε=${this.epsilon.toFixed(3)}).`);
+            console.log(`[Q-Bot] Loaded model from localStorage (${data.totalSteps || 0} steps, ε=${this.epsilon.toFixed(3)}).`);
             return true;
           }
         }
       } catch (e) {
         console.warn("[Q-Bot] Failed to load model from localStorage:", e);
-      }
-
-      if (typeof DEFAULT_PRETRAINED_MODEL !== "undefined" && DEFAULT_PRETRAINED_MODEL.model) {
-        try {
-          if (this.qNet.fromJSON(DEFAULT_PRETRAINED_MODEL.model)) {
-            this.targetNet.copyFrom(this.qNet);
-            this.epsilon = DEFAULT_PRETRAINED_MODEL.epsilon || CONFIG.epsilonMin;
-            this.totalKills = DEFAULT_PRETRAINED_MODEL.totalKills || 0;
-            this.totalDeaths = DEFAULT_PRETRAINED_MODEL.totalDeaths || 0;
-            console.log(`[Q-Bot] Loaded Embedded Pretrained Weights (ε=${this.epsilon.toFixed(3)}).`);
-            return true;
-          }
-        } catch (e) {}
       }
 
       return false;
